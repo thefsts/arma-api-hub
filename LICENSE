@@ -1,0 +1,64 @@
+FSTS PROPRIETARY SOURCE-AVAILABLE LICENSE
+Version 1.0 — September 21, 2026
+
+Copyright © 2026 Full Stack Tech & Solutions LLC. All rights reserved.
+
+1. OWNERSHIP
+
+This software, source code, documentation, designs, schemas, interfaces, trademarks, and related materials (collectively, the “Software”) are proprietary works owned by Full Stack Tech & Solutions LLC (“FSTS”) or its licensors. Public availability of the Software does not place it in the public domain and does not make it open-source software.
+
+2. LIMITED PERMISSION TO VIEW
+
+Subject to this License, FSTS grants each person a limited, revocable, non-exclusive, non-transferable permission to view the Software for evaluation, security review, or consideration of an authorized relationship with FSTS. No other rights are granted by implication, estoppel, or otherwise.
+
+3. PROHIBITED USES
+
+Without prior written authorization from FSTS, you may not:
+
+(a) use, execute, reproduce, modify, distribute, publish, sublicense, sell, lease, host, or commercially exploit the Software;
+(b) incorporate the Software or any substantial portion of it into another product or service;
+(c) use the Software to build, improve, benchmark, or operate a competing product or service;
+(d) remove or alter copyright, ownership, attribution, trademark, or security notices;
+(e) use the Software or its documentation to train, fine-tune, evaluate, or supply retrieval data to an artificial-intelligence or machine-learning system;
+(f) bypass technical restrictions, access controls, licensing controls, or security safeguards; or
+(g) represent that FSTS endorses, certifies, or authorizes any product, service, integration, or deployment.
+
+4. AUTHORIZED FSTS USE
+
+FSTS employees, contractors, affiliates, customers, partners, and client systems may use the Software only to the extent separately authorized in writing by FSTS and subject to the applicable agreement, statement of work, or integration approval. Public availability alone is not authorization.
+
+5. CONTRIBUTIONS
+
+Unless a separate written agreement applies, any contribution intentionally submitted to this repository is provided under the terms stated in CONTRIBUTING.md. No contribution grants the contributor ownership of FSTS trademarks, products, confidential information, or pre-existing intellectual property.
+
+6. SECURITY RESEARCH
+
+Security testing is permitted only within the scope and conditions of SECURITY.md. Do not test production systems, access data belonging to another party, degrade service, or publicly disclose an unremediated vulnerability.
+
+7. THIRD-PARTY MATERIALS
+
+Third-party dependencies and materials remain governed by their respective licenses. This License applies only to rights held by FSTS and does not replace third-party notices or obligations.
+
+8. TRADEMARKS AND PATENTS
+
+No trademark, service-mark, trade-name, logo, or patent license is granted except through a separate written agreement signed by FSTS.
+
+9. TERMINATION
+
+Any permission granted under this License terminates automatically upon breach. On termination, you must stop all use of the Software and destroy unauthorized copies, subject to applicable law and GitHub platform functionality.
+
+10. DISCLAIMER
+
+THE SOFTWARE IS PROVIDED “AS IS” AND “AS AVAILABLE,” WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT.
+
+11. LIMITATION OF LIABILITY
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, FSTS AND ITS OWNERS, OFFICERS, EMPLOYEES, CONTRACTORS, AND LICENSORS WILL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR FOR LOSS OF DATA, REVENUE, PROFITS, OR BUSINESS OPPORTUNITY ARISING FROM OR RELATED TO THE SOFTWARE.
+
+12. COMMERCIAL LICENSING
+
+Commercial, production, redistribution, integration, and hosted-service rights require a separate written agreement with Full Stack Tech & Solutions LLC.
+
+13. GOVERNING TERMS
+
+If this License conflicts with a separately signed agreement between FSTS and an authorized party, that signed agreement controls solely for that party and its authorized scope.
