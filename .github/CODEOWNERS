@@ -1,0 +1,12 @@
+# FSTS ownership and review routing
+* @thefsts
+
+# Security-sensitive and shared-contract areas
+/contracts/ @thefsts
+/packages/auth/ @thefsts
+/packages/crypto/ @thefsts
+/packages/policy/ @thefsts
+/infrastructure/ @thefsts
+/.github/ @thefsts
+/SECURITY.md @thefsts
+/LICENSE @thefsts
