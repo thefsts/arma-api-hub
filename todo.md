@@ -44,9 +44,10 @@
 ## 7. CI + validation
 - [x] CI workflow (PR + main)
 - [x] Run lint, typecheck, test, build, validate locally
+- [x] Fix secret-scan placeholder handling; CI green
 
 ## 8. Push + PR
-- [ ] Commit checkpoints
-- [ ] Push branch
-- [ ] Open PR (unmerged)
-- [ ] Final report
+- [x] Commit checkpoints
+- [x] Push branch
+- [x] Open PR (unmerged)
+- [x] Final report
