@@ -7,7 +7,7 @@
 - Working branch: `foundation/platform-runtime`
 - Pull request: #1 (open, unmerged)
 - PM baseline `main` SHA: `3a8dd30a9c7cf0f531d4ff9793c654cdae2afacd`
-- Branch HEAD SHA: `78a0c1a`
+- Branch HEAD SHA: `a01d920` (this report's commit)
 - Ahead/behind `origin/main`: 10 ahead, 0 behind (no force-push, no history rewrite)
 
 ## 1. Convex project connection
