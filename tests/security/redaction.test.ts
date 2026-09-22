@@ -9,7 +9,7 @@ describe('redaction-safe logging', () => {
     const { safe, droppedKeys } = redactMetadata({
       requestId: 'req-00000001',
       serviceId: 'arma-sentinel',
-      secret: 'super-secret-value',
+      secret: 'test-only-redaction-placeholder',
       token: 'bearer-abc',
       payload: { anything: true },
       signature: 'deadbeef',

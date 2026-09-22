@@ -21,9 +21,33 @@ const PATTERNS = [
   { name: 'JWT', re: /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/ },
   {
     name: 'Generic bearer assignment',
-    re: /(?:secret|token|password|passwd|api[_-]?key)\s*[:=]\s*['"][^'"]{16,}['"]/i,
+    re: /(?:secret|token|password|passwd|api[_-]?key)\s*[:=]\s*['"]([^'"]{16,})['"]/i,
+    // Only the low-signal generic pattern honors the placeholder allow-list.
+    // A value is treated as a safe placeholder only when it explicitly carries
+    // a synthetic marker, so real credentials are still caught.
+    valueGroup: 1,
   },
 ];
+
+// Substrings that mark a value as an intentional, non-secret placeholder.
+// These must appear inside the matched value itself, never merely on the line.
+const PLACEHOLDER_MARKERS = [
+  'test-only',
+  'placeholder',
+  'example',
+  'synthetic',
+  'dummy',
+  'fake',
+  'redacted',
+  'not-a-real',
+  'changeme',
+  'xxxx',
+];
+
+function isPlaceholderValue(value) {
+  const lower = value.toLowerCase();
+  return PLACEHOLDER_MARKERS.some((marker) => lower.includes(marker));
+}
 
 // Files that must never be tracked.
 const FORBIDDEN_TRACKED = [
@@ -67,10 +91,14 @@ for (const file of files) {
   const lines = text.split('\n');
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
-    for (const { name, re } of PATTERNS) {
-      if (re.test(line)) {
-        findings.push({ file, line: i + 1, name, detail: line.trim().slice(0, 120) });
+    for (const { name, re, valueGroup } of PATTERNS) {
+      const match = re.exec(line);
+      if (!match) continue;
+      if (valueGroup !== undefined) {
+        const value = match[valueGroup];
+        if (value !== undefined && isPlaceholderValue(value)) continue;
       }
+      findings.push({ file, line: i + 1, name, detail: line.trim().slice(0, 120) });
     }
   }
 }
