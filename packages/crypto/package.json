@@ -1,0 +1,22 @@
+{
+  "name": "@arma/crypto",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Versioned, replaceable signing and verification primitives for ARMA API Hub. Standard algorithms only; no homegrown encryption.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@arma/contracts": "workspace:*"
+  }
+}

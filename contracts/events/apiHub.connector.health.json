@@ -1,0 +1,7 @@
+{
+  "connectorId": "arma-sentinel",
+  "status": "AVAILABLE",
+  "checkedAt": "1700000000000",
+  "killSwitchEngaged": false,
+  "dependencyCount": 2
+}

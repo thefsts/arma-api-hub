@@ -1,0 +1,25 @@
+{
+  "name": "@arma/policy",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Authorization, capability, lifecycle, tenant-isolation, and kill-switch policy decisions for ARMA API Hub.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@arma/auth": "workspace:*",
+    "@arma/contracts": "workspace:*",
+    "@arma/crypto": "workspace:*",
+    "@arma/database": "workspace:*"
+  }
+}
