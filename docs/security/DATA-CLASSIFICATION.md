@@ -58,6 +58,15 @@ PROTECTED and above must additionally be subject to destination allow-listing.
 Data at REGULATED must additionally carry an explicit tenant scope, and a
 tenant-scoped request outside the service's authorized tenant is denied.
 
+Cost data follows the same handling rules and adds two of its own. A cost record
+that carries a customer reference must be readable only within the authorized
+tenant or customer scope, and a tenant-scoped cost read must not return another
+tenant's cost. A protected or regulated response must not be cached unless the
+contract explicitly allows caching, the cache is tenant-scoped, the cache is
+encrypted where the classification requires it, and the cache is governed by an
+approved retention policy; a cache record for a protected or regulated response
+that is not tenant-scoped is denied.
+
 ## Mapping to capabilities and connections
 
 A capability declares its direction (inbound, outbound, or bidirectional), its
@@ -89,6 +98,18 @@ health reports are INTERNAL. Kill-switch state is CONFIDENTIAL. No control
 plane record is classified above CONFIDENTIAL except where it references a
 REGULATED payload by hash, in which case the reference inherits the payload's
 classification.
+
+The Cost and Usage Guard's records are classified as follows. The vendor
+registry and vendor price versions are INTERNAL. Usage records and cost events
+are CONFIDENTIAL, because they carry commercial pricing and, where authorized, a
+tenant or customer reference. Rate-limit, quota, budget, and spending-limit
+state is CONFIDENTIAL. Anomaly and optimization records are INTERNAL. Cache,
+batch, and retry-waste records are CONFIDENTIAL. Vendor shutdown state is
+CONFIDENTIAL. Cost-export receipts are CONFIDENTIAL. A cost record that carries
+a customer reference is CONFIDENTIAL and is readable only within the authorized
+tenant or customer scope. No cost record is classified above CONFIDENTIAL, and
+no cost record carries a profitability or margin figure, because those belong to
+REGIVANTA and never cross into the control plane.
 
 ## Prohibited content
 

@@ -6,10 +6,13 @@ This threat model covers the ARMA API Hub control plane: the service-facing
 API, the durable worker, the operator console, the shared contracts, the
 registry, service identity and credential lifecycle, event routing, webhook
 delivery, retries and dead-letter handling, idempotency, signed receipts,
-connector health, destination allow lists, rate limits, kill switches, and
-integration auditability. It does not cover the internal security of each FSTS
-product; each product owns its own threat model, its own database, and its own
-security decisions.
+connector health, destination allow lists, rate limits, kill switches,
+integration auditability, and the API Cost and Usage Guard (vendor price
+versions, usage and cost records, rate-limit windows, quotas, budgets, spending
+limits, anomalies, optimization decisions, cache, batch, and retry-waste
+records, vendor shutdown controls, and cost-export receipts). It does not cover
+the internal security of each FSTS product; each product owns its own threat
+model, its own database, and its own security decisions.
 
 ## Assets
 
@@ -18,9 +21,15 @@ credential references; signing key material (held only in the secrets manager,
 never in the control plane); the registry of products, services, capabilities,
 connections, and contract versions; event and webhook payloads; signed
 receipts; idempotency and nonce registries; kill-switch state; connector health
-reports; and the audit trail. Customer data and product business records are
+reports; and the audit trail. The Cost and Usage Guard adds the vendor registry
+and immutable vendor price versions, the usage and cost ledger, the rate-limit,
+quota, budget, and spending-limit state, the anomaly and optimization records,
+the cache, batch, and retry-waste records, the vendor shutdown state, and the
+cost-export receipts. Customer data and product business records are
 not assets of the control plane; they belong to the products and must never be
-stored in the control plane.
+stored in the control plane. Vendor credentials are not assets of the control
+plane either; the guard stores vendor references and price versions, never
+vendor credentials.
 
 ## Trust boundaries
 
@@ -112,6 +121,52 @@ requirements. A product may attempt to read another product's database; the
 boundary forbids this, and cross-product data flows only through registered
 contracts and events.
 
+## Cost and usage threats
+
+The Cost and Usage Guard introduces threats that are financial rather than
+purely operational, and each is mitigated by construction.
+
+An attacker or a buggy caller may attempt to record the same external charge
+twice, inflating the recorded cost. The guard mitigates this by deduplicating on
+both the cost-event identifier and the idempotency key inside the recording
+transaction, so a duplicate cost event is rejected and a reused idempotency key
+that maps to a different cost event is rejected as a conflict.
+
+An attacker may attempt to tamper with a vendor price version to change the cost
+of past or future usage. The guard mitigates this by making price versions
+immutable and by resolving the price version that was effective at the request
+time, so a later price change cannot retroactively rewrite history and a past
+charge can always be explained.
+
+An attacker may attempt to introduce a floating-point monetary value to exploit
+rounding. The guard mitigates this by accepting only integer minor units and by
+rejecting a non-integer or unsafe-integer input in the deterministic cost
+primitives.
+
+An attacker may attempt to bypass a spend limit or a vendor shutdown to keep
+incurring cost. The guard mitigates this by evaluating the spending limit and the
+shutdown state on the request path and by refusing the request when the limit is
+throttling or blocking or when the vendor is shut down, regardless of budget or
+quota headroom.
+
+An attacker may attempt to read another tenant's or customer's cost. The guard
+mitigates this by attributing cost to the tenant and to the authorized customer
+reference and by indexing and reading cost by tenant and customer scope, so a
+tenant-scoped read cannot return another tenant's cost.
+
+An attacker may attempt to cache a protected or regulated response to avoid
+cost. The guard mitigates this by denying a cache record for a protected or
+regulated response that is not tenant-scoped, and by requiring that a cache be
+tenant-scoped, encrypted where the classification requires it, and governed by
+an approved retention policy.
+
+An attacker may attempt to make the API Hub assert a profitability or margin
+figure, or to make the AI Hub emit a second authoritative vendor charge, or to
+make REGIVANTA re-measure vendor usage. The guard mitigates this by enforcing the
+cost-ownership boundary in strict contracts that reject unknown fields, in
+tables that have no column for margin or profit, and in deterministic tests that
+assert the prohibited behaviors are rejected.
+
 ## Fail-closed posture
 
 Every unknown condition fails closed. An unregistered service is denied. A
@@ -121,7 +176,11 @@ request that exceeds the capability's classification ceiling is denied. A
 tenant-scoped request outside the authorized tenant is denied. An outbound
 request to a non-allow-listed destination is denied. A service whose kill
 switch is engaged is denied. Outbound delivery and connector delivery default
-to disabled.
+to disabled. A request that would incur cost with a vendor under an active
+emergency shutdown is denied. A request that reaches a spending limit whose
+action is throttle or block is denied. A cache record for a protected or
+regulated response that is not tenant-scoped is denied. A cost event that
+duplicates an existing cost-event identifier or idempotency key is denied.
 
 ## Residual risks
 

@@ -355,3 +355,137 @@ export type OperonPosPanicTriggeredPayload = z.infer<typeof operonPosPanicTrigge
 export type OperonRegulatedTransactionStatusChangedPayload = z.infer<
   typeof operonRegulatedTransactionStatusChangedPayloadSchema
 >;
+
+// --- Cost & Usage Guard catalog ---------------------------------------------
+//
+// The normalized cost-event surface plus the AI Hub handoff and REGIVANTA
+// export contracts. These are declared here (rather than in cost.ts) so the
+// catalog remains the single index of every contract the control plane knows.
+
+import {
+  aiExecutionCostReferenceSchema,
+  apiCostRecordedSchema,
+  apiUsageRecordedSchema,
+  batchSavingsRecordedSchema,
+  budgetThresholdReachedSchema,
+  cacheSavingsRecordedSchema,
+  connectorSpendBlockedSchema,
+  costAnomalyDetectedSchema,
+  costExportEnvelopeSchema,
+  costExportedSchema,
+  quotaThresholdReachedSchema,
+  retryWasteRecordedSchema,
+  vendorShutdownActivatedSchema,
+} from './cost.js';
+
+export const COST_CONTRACT_CATALOG: readonly ContractCatalogEntry[] = [
+  {
+    name: 'apiHub.apiUsageRecorded',
+    kind: 'EVENT',
+    version: '1.0.0',
+    lifecycle: 'DRAFT',
+    maxClassification: 'INTERNAL',
+    payload: apiUsageRecordedSchema,
+  },
+  {
+    name: 'apiHub.apiCostRecorded',
+    kind: 'EVENT',
+    version: '1.0.0',
+    lifecycle: 'DRAFT',
+    maxClassification: 'INTERNAL',
+    payload: apiCostRecordedSchema,
+  },
+  {
+    name: 'apiHub.retryWasteRecorded',
+    kind: 'EVENT',
+    version: '1.0.0',
+    lifecycle: 'DRAFT',
+    maxClassification: 'INTERNAL',
+    payload: retryWasteRecordedSchema,
+  },
+  {
+    name: 'apiHub.cacheSavingsRecorded',
+    kind: 'EVENT',
+    version: '1.0.0',
+    lifecycle: 'DRAFT',
+    maxClassification: 'INTERNAL',
+    payload: cacheSavingsRecordedSchema,
+  },
+  {
+    name: 'apiHub.batchSavingsRecorded',
+    kind: 'EVENT',
+    version: '1.0.0',
+    lifecycle: 'DRAFT',
+    maxClassification: 'INTERNAL',
+    payload: batchSavingsRecordedSchema,
+  },
+  {
+    name: 'apiHub.quotaThresholdReached',
+    kind: 'EVENT',
+    version: '1.0.0',
+    lifecycle: 'DRAFT',
+    maxClassification: 'INTERNAL',
+    payload: quotaThresholdReachedSchema,
+  },
+  {
+    name: 'apiHub.budgetThresholdReached',
+    kind: 'EVENT',
+    version: '1.0.0',
+    lifecycle: 'DRAFT',
+    maxClassification: 'INTERNAL',
+    payload: budgetThresholdReachedSchema,
+  },
+  {
+    name: 'apiHub.costAnomalyDetected',
+    kind: 'EVENT',
+    version: '1.0.0',
+    lifecycle: 'DRAFT',
+    maxClassification: 'INTERNAL',
+    payload: costAnomalyDetectedSchema,
+  },
+  {
+    name: 'apiHub.connectorSpendBlocked',
+    kind: 'EVENT',
+    version: '1.0.0',
+    lifecycle: 'DRAFT',
+    maxClassification: 'INTERNAL',
+    payload: connectorSpendBlockedSchema,
+  },
+  {
+    name: 'apiHub.vendorShutdownActivated',
+    kind: 'EVENT',
+    version: '1.0.0',
+    lifecycle: 'DRAFT',
+    maxClassification: 'INTERNAL',
+    payload: vendorShutdownActivatedSchema,
+  },
+  {
+    name: 'apiHub.costExported',
+    kind: 'EVENT',
+    version: '1.0.0',
+    lifecycle: 'DRAFT',
+    maxClassification: 'INTERNAL',
+    payload: costExportedSchema,
+  },
+  {
+    name: 'apiHub.aiExecutionCostReference',
+    kind: 'COMMAND',
+    version: '1.0.0',
+    lifecycle: 'DRAFT',
+    maxClassification: 'INTERNAL',
+    payload: aiExecutionCostReferenceSchema,
+  },
+  {
+    name: 'apiHub.costExport',
+    kind: 'EVENT',
+    version: '1.0.0',
+    lifecycle: 'DRAFT',
+    maxClassification: 'INTERNAL',
+    payload: costExportEnvelopeSchema,
+  },
+];
+
+/** Look up a cost catalog entry by name. */
+export function getCostCatalogEntry(name: string): ContractCatalogEntry | undefined {
+  return COST_CONTRACT_CATALOG.find((entry) => entry.name === name);
+}

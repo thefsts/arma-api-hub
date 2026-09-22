@@ -126,6 +126,31 @@ the operation outcome, so a partial write can never poison the registry; and
 the event store must support monotonic per-stream sequence numbers so ordering
 gaps are detectable.
 
+## Cost and Usage Guard
+
+The Cost and Usage Guard is the part of the control plane that measures and
+governs the cost of external usage. It is implemented as a set of Convex tables
+and functions under `convex/`, alongside the core registry and delivery tables.
+It stores the vendor registry and immutable vendor price versions, the usage and
+cost ledger, the rate-limit, quota, budget, and spending-limit state, the
+anomaly and optimization records, the cache, batch, and retry-waste records, the
+vendor shutdown state, and the cost-export receipts.
+
+The guard's monetary arithmetic is exact: every amount is an integer in minor
+currency units, and the deterministic cost primitives reject a non-integer or
+unsafe-integer input. The guard resolves the vendor price version that was
+effective at the request time, so a later price change never rewrites history.
+The cost ledger deduplicates on both the cost-event identifier and the
+idempotency key, so the same external charge is never counted twice.
+
+The guard emits eleven normalized cost events, each a strict, versioned contract
+with a sanitized fixture, and it provides an AI Hub handoff contract that
+references an authoritative cost event without carrying a monetary field, and a
+REGIVANTA export contract that carries measured usage and cost without carrying a
+profitability field. The cost-ownership boundary is recorded in the cost
+ownership boundaries document and in ADR 0004, and it is enforced by the strict
+contracts and by the deterministic tests.
+
 ## Environment separation
 
 The runtime distinguishes three environments: development, preview, and

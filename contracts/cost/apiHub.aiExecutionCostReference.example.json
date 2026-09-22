@@ -1,0 +1,14 @@
+{
+  "referenceId": "ref_example_00000001",
+  "apiHubCostEventId": "cev_example_00000002",
+  "aiExecutionId": "aiex_example_00000001",
+  "agentId": "agt_example_00000001",
+  "workflowId": "wfl_example_00000001",
+  "toolInvocationId": "tli_example_00000001",
+  "correlationId": "corr-example-00000002",
+  "causationId": "caus-example-00000002",
+  "idempotencyKey": "idem-example-00000002",
+  "sourceHub": "FSTS_AI_HUB",
+  "schemaVersion": "1.0.0",
+  "referencedAt": "1700000000000"
+}

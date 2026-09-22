@@ -7,4 +7,5 @@ export * from './primitives.js';
 export * from './envelopes.js';
 export * from './registry.js';
 export * from './catalog.js';
+export * from './cost.js';
 export * from './validate.js';

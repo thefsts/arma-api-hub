@@ -23,7 +23,7 @@ the products.
 
 ## Scope of Phase 0
 
-Phase 0 delivers eight workstreams, each of which is complete only when it is
+Phase 0 delivers nine workstreams, each of which is complete only when it is
 verifiable from the repository:
 
 1. **Architecture inspection and reuse assessment.** Inspect the existing FSTS
@@ -56,6 +56,18 @@ verifiable from the repository:
    Phase 0.
 8. **Testing.** Provide deterministic tests for sixteen required scenarios using
    only synthetic data.
+9. **Cost and Usage Guard.** Establish the cost-ownership boundary between the
+   API Hub, the FSTS AI Hub, and REGIVANTA Cost Guard; define the sixteen cost
+   tables with the indexes their read paths require; define the eleven
+   normalized cost events, the AI Hub handoff contract, and the REGIVANTA export
+   contract with sanitized fixtures; implement the deterministic cost
+   primitives, the vendor price versions, the usage and cost ledger, the
+   rate-limit, quota, budget, and spending-limit controls, the anomaly and
+   optimization records, and the emergency vendor shutdown; and provide the
+   deterministic cost tests and the cost documentation. Phase 0 does not connect
+   real vendor accounts, does not import production invoices, does not activate
+   production billing, and does not send live cost events to the AI Hub or to
+   REGIVANTA.
 
 ## The platform boundary (locked)
 
@@ -87,10 +99,16 @@ Phase 0 produces the following artifacts, all committed to the
 - Shared envelope and registry contracts with runtime validation.
 - An initial catalog of fifteen contracts with sanitized fixtures.
 - A deterministic test suite covering sixteen required scenarios.
-- Nine required documents: this plan, the reuse assessment, the runtime
+- A Cost and Usage Guard with sixteen cost tables, eleven normalized cost
+  events, an AI Hub handoff contract, and a REGIVANTA export contract, each with
+  a sanitized fixture, and a deterministic cost test suite covering the twenty
+  required cost scenarios.
+- Fourteen required documents: this plan, the reuse assessment, the runtime
   architecture document, the runtime ADR, the threat model, the data
   classification standard, the service onboarding guide, the credential
-  revocation runbook, and the connector kill-switch runbook.
+  revocation runbook, the connector kill-switch runbook, the cost-ownership
+  boundaries document, the API cost and usage guard document, the cost ADR, the
+  vendor spend limit runbook, and the emergency vendor shutdown runbook.
 - A CI workflow that runs on pull requests and pushes to `main`.
 
 ## Non-goals
@@ -106,8 +124,9 @@ existing governance files.
 
 Phase 0 is complete when: the repository builds, typechecks, lints, formats,
 tests, scans for secrets, and checks dependencies cleanly; the sixteen test
-scenarios pass deterministically; the nine documents exist and are consistent
-with the code; the pull request is open and unmerged; and no production secret,
+scenarios pass deterministically; the twenty cost scenarios pass
+deterministically; the fourteen documents exist and are consistent with the
+code; the pull request is open and unmerged; and no production secret,
 credential, or customer data has been committed.
 
 ## Handoff to Phase 1
