@@ -1,0 +1,7 @@
+{
+  "transactionId": "txn-00000001",
+  "previousStatus": "PENDING",
+  "newStatus": "HELD",
+  "changedAt": "1700000000000",
+  "requiresHumanApproval": true
+}

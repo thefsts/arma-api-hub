@@ -1,0 +1,8 @@
+{
+  "connectorId": "arma-sentinel",
+  "incidentId": "inc-00000001",
+  "severity": "HIGH",
+  "reasonCode": "DOWNSTREAM_TIMEOUT",
+  "detectedAt": "1700000000000",
+  "deliveryHalted": true
+}

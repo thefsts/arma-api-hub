@@ -1,0 +1,7 @@
+{
+  "targetServiceId": "arma-sentinel",
+  "engaged": true,
+  "reason": "manual containment",
+  "authorizedBy": "owner-platform",
+  "effectiveAt": "1700000000000"
+}

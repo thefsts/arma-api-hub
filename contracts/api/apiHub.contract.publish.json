@@ -1,0 +1,10 @@
+{
+  "contract": {
+    "contractId": "apiHub.event.publish",
+    "version": "1.0.0",
+    "status": "DRAFT"
+  },
+  "kind": "COMMAND",
+  "schemaHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "compatibility": "BACKWARD"
+}

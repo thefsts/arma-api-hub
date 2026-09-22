@@ -1,0 +1,20 @@
+{
+  "serviceId": "arma-sentinel",
+  "displayName": "ARMA Sentinel",
+  "productId": "prod-arma-sentinel",
+  "environment": "DEVELOPMENT",
+  "owner": {
+    "ownerId": "owner-platform",
+    "displayName": "Platform Team",
+    "contactRef": "platform@example.invalid"
+  },
+  "classification": "CONFIDENTIAL",
+  "capabilities": [
+    {
+      "capability": "events.publish",
+      "direction": "OUTBOUND",
+      "maxClassification": "CONFIDENTIAL",
+      "requiresApproval": true
+    }
+  ]
+}
