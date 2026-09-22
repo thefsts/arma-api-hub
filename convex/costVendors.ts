@@ -1,38 +1,48 @@
 // Cost & Usage Guard — vendors, immutable price versions, and subscriptions.
 //
-// Reads are public queries guarded by role. Writes are privileged internal
-// mutations. Vendor credentials are NEVER stored here — only vendor identity,
-// pricing metadata, and subscription metadata.
+// Phase 0: every read is an INTERNAL query (see
+// docs/security/ADR-0005-authentication-decision.md). Vendor identity and
+// pricing metadata are shared control-plane metadata, so reads require an
+// authorized principal holding a permitted role. Subscriptions are scoped to a
+// service, so subscription reads enforce the caller's server-derived service
+// scope. Writes are privileged internal mutations. Vendor credentials are NEVER
+// stored here — only vendor identity, pricing metadata, and subscription
+// metadata.
 //
 // Price versions are immutable: a new price is always a new row. Historical
 // usage keeps the pricingVersionId that applied when the request occurred.
 
 import { v } from 'convex/values';
-import { internalMutation, query } from './_generated/server';
+import { internalMutation, internalQuery } from './_generated/server';
 import {
   classificationValidator,
   environmentValidator,
   lifecycleValidator,
   usageUnitValidator,
 } from './lib/validators';
-import { requireRole } from './lib/authz';
+import { filterByServiceScope, requireAuthorizationContext, requireRole } from './lib/authz';
+import { apiVendorDoc, connectorSubscriptionDoc, vendorPriceVersionDoc } from './lib/returns';
 import { fail } from './lib/errors';
 import { newId } from './lib/ids';
 import { resolveEffectivePriceVersion } from './lib/cost';
 
-export const listVendors = query({
+export const listVendors = internalQuery({
   args: { limit: v.optional(v.number()) },
+  returns: v.array(apiVendorDoc),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    requireRole(authz, ['admin', 'operator', 'viewer']);
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
     return await ctx.db.query('apiVendors').take(limit);
   },
 });
 
-export const getVendor = query({
+export const getVendor = internalQuery({
   args: { vendorId: v.string() },
+  returns: v.union(apiVendorDoc, v.null()),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    requireRole(authz, ['admin', 'operator', 'viewer']);
     return await ctx.db
       .query('apiVendors')
       .withIndex('by_vendorId', (q) => q.eq('vendorId', args.vendorId))
@@ -40,10 +50,12 @@ export const getVendor = query({
   },
 });
 
-export const listPriceVersions = query({
+export const listPriceVersions = internalQuery({
   args: { vendorId: v.string(), limit: v.optional(v.number()) },
+  returns: v.array(vendorPriceVersionDoc),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    requireRole(authz, ['admin', 'operator', 'viewer']);
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
     return await ctx.db
       .query('vendorPriceVersions')
@@ -56,10 +68,12 @@ export const listPriceVersions = query({
  * Resolve the price version effective at a point in time. Returns null when no
  * version applies — callers must fail closed rather than guess a price.
  */
-export const resolvePriceVersion = query({
+export const resolvePriceVersion = internalQuery({
   args: { vendorId: v.string(), at: v.number() },
+  returns: v.union(vendorPriceVersionDoc, v.null()),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    requireRole(authz, ['admin', 'operator', 'viewer']);
     const versions = await ctx.db
       .query('vendorPriceVersions')
       .withIndex('by_vendorId_effectiveFrom', (q) => q.eq('vendorId', args.vendorId))
@@ -68,15 +82,17 @@ export const resolvePriceVersion = query({
   },
 });
 
-export const listSubscriptions = query({
+export const listSubscriptions = internalQuery({
   args: { connectorId: v.string(), limit: v.optional(v.number()) },
+  returns: v.array(connectorSubscriptionDoc),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
-    return await ctx.db
+    const rows = await ctx.db
       .query('connectorSubscriptions')
       .withIndex('by_connectorId', (q) => q.eq('connectorId', args.connectorId))
       .take(limit);
+    return filterByServiceScope(authz, rows, (row) => row.serviceId);
   },
 });
 
@@ -89,6 +105,7 @@ export const registerVendor = internalMutation({
     owner: v.string(),
     dataClassification: classificationValidator,
   },
+  returns: v.string(),
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query('apiVendors')
@@ -128,6 +145,7 @@ export const addPriceVersion = internalMutation({
     effectiveFrom: v.number(),
     effectiveTo: v.optional(v.number()),
   },
+  returns: v.string(),
   handler: async (ctx, args) => {
     if (!Number.isInteger(args.unitPriceMinor) || args.unitPriceMinor < 0) {
       fail('VALIDATION_FAILED', 'unitPriceMinor must be a non-negative integer (minor units).');
@@ -168,6 +186,7 @@ export const registerSubscription = internalMutation({
     monthlyBaseMinor: v.number(),
     currency: v.string(),
   },
+  returns: v.string(),
   handler: async (ctx, args) => {
     if (!Number.isInteger(args.monthlyBaseMinor) || args.monthlyBaseMinor < 0) {
       fail('VALIDATION_FAILED', 'monthlyBaseMinor must be a non-negative integer (minor units).');

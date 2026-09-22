@@ -1,29 +1,68 @@
 // Webhook endpoints, deliveries, and delivery attempts.
 //
-// Endpoints store a secret *reference*, never a secret value. Delivery
-// scheduling, attempt recording, and dead-lettering are privileged internal
-// operations. Reads are public queries guarded by role.
+// Endpoints store a secret *reference*, never a secret value.
+//
+// Phase 0: every read is an INTERNAL query (see
+// docs/security/ADR-0005-authentication-decision.md). Webhook configuration,
+// deliveries, and attempts are scoped to a service. A caller may only see
+// endpoints, deliveries, and attempts belonging to a service it is authorized
+// for; a delivery or attempt is resolved to its owning service through durable
+// records and fails closed when unbound. Delivery scheduling, attempt
+// recording, and dead-lettering are privileged internal operations.
 
 import { v } from 'convex/values';
-import { internalMutation, query } from './_generated/server';
+import { internalMutation, internalQuery } from './_generated/server';
 import { deliveryStatusValidator, failureClassValidator } from './lib/validators';
-import { requireRole } from './lib/authz';
+import {
+  filterByServiceScope,
+  requireAuthorizationContext,
+  requireServiceScope,
+} from './lib/authz';
+import { deliveryAttemptDoc, webhookDeliveryDoc, webhookEndpointDoc } from './lib/returns';
 import { fail } from './lib/errors';
 import { newId } from './lib/ids';
+import type { QueryCtx, MutationCtx } from './_generated/server';
 
-export const listEndpoints = query({
+async function resolveEndpointServiceId(
+  ctx: QueryCtx | MutationCtx,
+  endpointId: string,
+): Promise<string | null> {
+  const endpoint = await ctx.db
+    .query('webhookEndpoints')
+    .withIndex('by_endpointId', (q) => q.eq('endpointId', endpointId))
+    .first();
+  return endpoint ? endpoint.serviceId : null;
+}
+
+async function resolveDeliveryServiceId(
+  ctx: QueryCtx | MutationCtx,
+  deliveryId: string,
+): Promise<string | null> {
+  const delivery = await ctx.db
+    .query('webhookDeliveries')
+    .withIndex('by_deliveryId', (q) => q.eq('deliveryId', deliveryId))
+    .first();
+  if (!delivery) return null;
+  return await resolveEndpointServiceId(ctx, delivery.endpointId);
+}
+
+export const listEndpoints = internalQuery({
   args: { limit: v.optional(v.number()) },
+  returns: v.array(webhookEndpointDoc),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
-    return await ctx.db.query('webhookEndpoints').take(limit);
+    const rows = await ctx.db.query('webhookEndpoints').take(limit);
+    return filterByServiceScope(authz, rows, (row) => row.serviceId);
   },
 });
 
-export const listEndpointsByService = query({
+export const listEndpointsByService = internalQuery({
   args: { serviceId: v.string(), limit: v.optional(v.number()) },
+  returns: v.array(webhookEndpointDoc),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    requireServiceScope(authz, args.serviceId);
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
     return await ctx.db
       .query('webhookEndpoints')
@@ -32,10 +71,18 @@ export const listEndpointsByService = query({
   },
 });
 
-export const listDeliveriesByEndpoint = query({
+export const listDeliveriesByEndpoint = internalQuery({
   args: { endpointId: v.string(), limit: v.optional(v.number()) },
+  returns: v.array(webhookDeliveryDoc),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    const serviceId = await resolveEndpointServiceId(ctx, args.endpointId);
+    if (serviceId === null) {
+      fail('FORBIDDEN', 'The endpoint is not bound to an authorized service.', {
+        endpointId: args.endpointId,
+      });
+    }
+    requireServiceScope(authz, serviceId);
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
     return await ctx.db
       .query('webhookDeliveries')
@@ -44,10 +91,18 @@ export const listDeliveriesByEndpoint = query({
   },
 });
 
-export const listAttempts = query({
+export const listAttempts = internalQuery({
   args: { deliveryId: v.string(), limit: v.optional(v.number()) },
+  returns: v.array(deliveryAttemptDoc),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    const serviceId = await resolveDeliveryServiceId(ctx, args.deliveryId);
+    if (serviceId === null) {
+      fail('FORBIDDEN', 'The delivery is not bound to an authorized service.', {
+        deliveryId: args.deliveryId,
+      });
+    }
+    requireServiceScope(authz, serviceId);
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
     return await ctx.db
       .query('deliveryAttempts')
@@ -63,6 +118,7 @@ export const registerEndpoint = internalMutation({
     secretRef: v.string(),
     allowListed: v.boolean(),
   },
+  returns: v.string(),
   handler: async (ctx, args) => {
     const endpointId = newId('whk');
     const now = Date.now();
@@ -82,6 +138,7 @@ export const registerEndpoint = internalMutation({
 
 export const setEndpointActive = internalMutation({
   args: { endpointId: v.string(), active: v.boolean() },
+  returns: v.string(),
   handler: async (ctx, args) => {
     const record = await ctx.db
       .query('webhookEndpoints')
@@ -101,6 +158,7 @@ export const enqueueDelivery = internalMutation({
     eventId: v.string(),
     nextAttemptAt: v.optional(v.number()),
   },
+  returns: v.string(),
   handler: async (ctx, args) => {
     const endpoint = await ctx.db
       .query('webhookEndpoints')
@@ -139,6 +197,7 @@ export const recordAttempt = internalMutation({
     nextAttemptAt: v.optional(v.number()),
     lastError: v.optional(v.string()),
   },
+  returns: v.number(),
   handler: async (ctx, args) => {
     const delivery = await ctx.db
       .query('webhookDeliveries')
@@ -171,6 +230,7 @@ export const recordAttempt = internalMutation({
 
 export const deadLetter = internalMutation({
   args: { deliveryId: v.string(), lastError: v.optional(v.string()) },
+  returns: v.string(),
   handler: async (ctx, args) => {
     const delivery = await ctx.db
       .query('webhookDeliveries')
@@ -188,16 +248,25 @@ export const deadLetter = internalMutation({
   },
 });
 
-export const listDueDeliveries = query({
+export const listDueDeliveries = internalQuery({
   args: { now: v.number(), limit: v.optional(v.number()) },
+  returns: v.array(webhookDeliveryDoc),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'service']);
+    const authz = await requireAuthorizationContext(ctx);
     const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
-    return await ctx.db
+    const rows = await ctx.db
       .query('webhookDeliveries')
       .withIndex('by_status_nextAttemptAt', (q) =>
         q.eq('status', 'PENDING').lte('nextAttemptAt', args.now),
       )
       .take(limit);
+    const result: typeof rows = [];
+    for (const row of rows) {
+      const serviceId = await resolveEndpointServiceId(ctx, row.endpointId);
+      if (serviceId !== null && (authz.global || authz.serviceIds.has(serviceId))) {
+        result.push(row);
+      }
+    }
+    return result;
   },
 });

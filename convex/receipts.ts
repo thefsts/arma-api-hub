@@ -1,34 +1,49 @@
 // Signed receipt records.
 //
 // Receipts store hashes, algorithm metadata, and key references. They never
-// store raw signatures, secrets, or protected payloads. Recording and verifying
-// receipts are privileged internal operations.
+// store raw signatures, secrets, or protected payloads.
+//
+// Phase 0: every read is an INTERNAL query (see
+// docs/security/ADR-0005-authentication-decision.md). Receipts are scoped to a
+// service, so reads require the caller's server-derived service scope.
+// Recording and verifying receipts are privileged internal operations.
 
 import { v } from 'convex/values';
-import { internalMutation, query } from './_generated/server';
-import { requireRole } from './lib/authz';
+import { internalMutation, internalQuery } from './_generated/server';
+import {
+  filterByServiceScope,
+  requireAuthorizationContext,
+  requireServiceScope,
+} from './lib/authz';
+import { receiptRecordDoc } from './lib/returns';
 import { newId } from './lib/ids';
 
-export const get = query({
+export const get = internalQuery({
   args: { receiptId: v.string() },
+  returns: v.union(receiptRecordDoc, v.null()),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
-    return await ctx.db
+    const authz = await requireAuthorizationContext(ctx);
+    const record = await ctx.db
       .query('receiptRecords')
       .withIndex('by_receiptId', (q) => q.eq('receiptId', args.receiptId))
       .first();
+    if (record === null) return null;
+    requireServiceScope(authz, record.serviceId);
+    return record;
   },
 });
 
-export const listByEvent = query({
+export const listByEvent = internalQuery({
   args: { eventId: v.string(), limit: v.optional(v.number()) },
+  returns: v.array(receiptRecordDoc),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
-    return await ctx.db
+    const rows = await ctx.db
       .query('receiptRecords')
       .withIndex('by_eventId', (q) => q.eq('eventId', args.eventId))
       .take(limit);
+    return filterByServiceScope(authz, rows, (row) => row.serviceId);
   },
 });
 
@@ -41,6 +56,7 @@ export const record = internalMutation({
     keyId: v.string(),
     bodyHash: v.string(),
   },
+  returns: v.string(),
   handler: async (ctx, args) => {
     const receiptId = args.receiptId ?? newId('rcp');
     await ctx.db.insert('receiptRecords', {
@@ -58,6 +74,7 @@ export const record = internalMutation({
 
 export const markVerified = internalMutation({
   args: { receiptId: v.string() },
+  returns: v.boolean(),
   handler: async (ctx, args) => {
     const record = await ctx.db
       .query('receiptRecords')

@@ -1,9 +1,13 @@
 // Cost & Usage Guard — rate limits, quotas, budgets, spending limits, and
 // emergency vendor shutdown controls.
 //
-// Reads are public queries guarded by role. All state changes are privileged
-// internal mutations. Every warning, throttle, block, and shutdown writes an
-// audit event in the same transaction.
+// Phase 0: every read is an INTERNAL query (see
+// docs/security/ADR-0005-authentication-decision.md). Reads enforce the
+// caller's server-derived scope: rate-limit windows and spending limits are
+// connector-scoped (resolved to the owning service), and quotas and budgets
+// enforce their declared scope kind. All state changes are privileged internal
+// mutations. Every warning, throttle, block, and shutdown writes an audit event
+// in the same transaction.
 //
 // Money is integer minor units. Threshold evaluation is deterministic (see
 // lib/cost.ts). Cost optimization never bypasses tenant isolation,
@@ -11,8 +15,20 @@
 // emergency-event handling, contract compatibility, or audit requirements.
 
 import { v } from 'convex/values';
-import { internalMutation, query } from './_generated/server';
-import { requireRole } from './lib/authz';
+import { internalMutation, internalQuery } from './_generated/server';
+import { thresholdStatusValidator } from './lib/validators';
+import {
+  requireAuthorizationContext,
+  requireConnectorScope,
+  requireScopeByKind,
+} from './lib/authz';
+import {
+  quotaAllocationDoc,
+  rateLimitWindowDoc,
+  spendingLimitDoc,
+  usageBudgetDoc,
+  vendorShutdownControlDoc,
+} from './lib/returns';
 import { fail } from './lib/errors';
 import { newId } from './lib/ids';
 import { evaluateThreshold } from './lib/cost';
@@ -20,10 +36,12 @@ import { writeAuditEvent } from './lib/audit';
 
 // --- Rate-limit windows ------------------------------------------------------
 
-export const getRateLimitWindow = query({
+export const getRateLimitWindow = internalQuery({
   args: { connectorId: v.string(), windowStart: v.number() },
+  returns: v.union(rateLimitWindowDoc, v.null()),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    await requireConnectorScope(ctx, authz, args.connectorId);
     return await ctx.db
       .query('rateLimitWindows')
       .withIndex('by_connectorId_windowStart', (q) =>
@@ -42,6 +60,7 @@ export const consumeRateLimit = internalMutation({
     limit: v.number(),
     amount: v.number(),
   },
+  returns: v.object({ consumed: v.number(), limit: v.number(), exceeded: v.boolean() }),
   handler: async (ctx, args) => {
     if (!Number.isInteger(args.amount) || args.amount < 0) {
       fail('VALIDATION_FAILED', 'amount must be a non-negative integer.');
@@ -75,10 +94,12 @@ export const consumeRateLimit = internalMutation({
 
 // --- Quota allocations -------------------------------------------------------
 
-export const getQuota = query({
+export const getQuota = internalQuery({
   args: { scope: v.string(), scopeId: v.string() },
+  returns: v.union(quotaAllocationDoc, v.null()),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    await requireScopeByKind(ctx, authz, args.scope, args.scopeId);
     return await ctx.db
       .query('quotaAllocations')
       .withIndex('by_scope_scopeId', (q) => q.eq('scope', args.scope).eq('scopeId', args.scopeId))
@@ -106,6 +127,7 @@ export const allocateQuota = internalMutation({
       v.literal('STORAGE_BYTE_MONTH'),
     ),
   },
+  returns: v.string(),
   handler: async (ctx, args) => {
     const quotaId = newId('qta');
     await ctx.db.insert('quotaAllocations', {
@@ -137,6 +159,12 @@ export const consumeQuota = internalMutation({
     warningPct: v.number(),
     actor: v.string(),
   },
+  returns: v.object({
+    status: thresholdStatusValidator,
+    consumedQuantity: v.number(),
+    limitQuantity: v.number(),
+    consumedPct: v.number(),
+  }),
   handler: async (ctx, args) => {
     const quota = await ctx.db
       .query('quotaAllocations')
@@ -179,10 +207,12 @@ export const consumeQuota = internalMutation({
 
 // --- Usage budgets -----------------------------------------------------------
 
-export const getBudget = query({
+export const getBudget = internalQuery({
   args: { scope: v.string(), scopeId: v.string() },
+  returns: v.union(usageBudgetDoc, v.null()),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    await requireScopeByKind(ctx, authz, args.scope, args.scopeId);
     return await ctx.db
       .query('usageBudgets')
       .withIndex('by_scope_scopeId', (q) => q.eq('scope', args.scope).eq('scopeId', args.scopeId))
@@ -199,6 +229,7 @@ export const createBudget = internalMutation({
     currency: v.string(),
     warningThresholdPct: v.number(),
   },
+  returns: v.string(),
   handler: async (ctx, args) => {
     if (!Number.isInteger(args.limitMinor) || args.limitMinor < 0) {
       fail('VALIDATION_FAILED', 'limitMinor must be a non-negative integer (minor units).');
@@ -222,6 +253,12 @@ export const createBudget = internalMutation({
 
 export const recordBudgetSpend = internalMutation({
   args: { budgetId: v.string(), amountMinor: v.number(), actor: v.string() },
+  returns: v.object({
+    status: thresholdStatusValidator,
+    consumedMinor: v.number(),
+    limitMinor: v.number(),
+    consumedPct: v.number(),
+  }),
   handler: async (ctx, args) => {
     const budget = await ctx.db
       .query('usageBudgets')
@@ -269,10 +306,12 @@ export const recordBudgetSpend = internalMutation({
 
 // --- Connector spending limits ----------------------------------------------
 
-export const getSpendingLimit = query({
+export const getSpendingLimit = internalQuery({
   args: { connectorId: v.string(), billingPeriod: v.string() },
+  returns: v.union(spendingLimitDoc, v.null()),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    await requireConnectorScope(ctx, authz, args.connectorId);
     return await ctx.db
       .query('spendingLimits')
       .withIndex('by_connectorId_billingPeriod', (q) =>
@@ -291,6 +330,7 @@ export const createSpendingLimit = internalMutation({
     currency: v.string(),
     action: v.union(v.literal('WARN'), v.literal('THROTTLE'), v.literal('BLOCK')),
   },
+  returns: v.string(),
   handler: async (ctx, args) => {
     if (!Number.isInteger(args.limitMinor) || args.limitMinor < 0) {
       fail('VALIDATION_FAILED', 'limitMinor must be a non-negative integer (minor units).');
@@ -330,6 +370,14 @@ export const evaluateSpendingLimit = internalMutation({
     warningPct: v.number(),
     actor: v.string(),
   },
+  returns: v.object({
+    status: thresholdStatusValidator,
+    allowed: v.boolean(),
+    action: v.union(v.literal('WARN'), v.literal('THROTTLE'), v.literal('BLOCK')),
+    consumedMinor: v.number(),
+    limitMinor: v.number(),
+    consumedPct: v.number(),
+  }),
   handler: async (ctx, args) => {
     const limit = await ctx.db
       .query('spendingLimits')
@@ -344,6 +392,7 @@ export const evaluateSpendingLimit = internalMutation({
         action: 'WARN' as const,
         consumedMinor: 0,
         limitMinor: 0,
+        consumedPct: 0,
       };
     }
     const consumedMinor = limit.consumedMinor + args.incrementalMinor;
@@ -403,10 +452,14 @@ export const evaluateSpendingLimit = internalMutation({
 
 // --- Emergency vendor shutdown controls --------------------------------------
 
-export const getShutdown = query({
+export const getShutdown = internalQuery({
   args: { vendorId: v.string() },
+  returns: v.union(vendorShutdownControlDoc, v.null()),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    if (!authz.global) {
+      fail('FORBIDDEN', 'Vendor shutdown controls require global authorization.');
+    }
     return await ctx.db
       .query('vendorShutdownControls')
       .withIndex('by_vendorId', (q) => q.eq('vendorId', args.vendorId))
@@ -414,10 +467,14 @@ export const getShutdown = query({
   },
 });
 
-export const listActiveShutdowns = query({
+export const listActiveShutdowns = internalQuery({
   args: { limit: v.optional(v.number()) },
+  returns: v.array(vendorShutdownControlDoc),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    if (!authz.global) {
+      fail('FORBIDDEN', 'Vendor shutdown controls require global authorization.');
+    }
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
     return await ctx.db
       .query('vendorShutdownControls')
@@ -427,10 +484,14 @@ export const listActiveShutdowns = query({
 });
 
 /** True when the vendor (or a specific connector) is under an active shutdown. */
-export const isVendorShutdown = query({
+export const isVendorShutdown = internalQuery({
   args: { vendorId: v.string(), connectorId: v.optional(v.string()) },
+  returns: v.boolean(),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    if (!authz.global) {
+      fail('FORBIDDEN', 'Vendor shutdown controls require global authorization.');
+    }
     const active = await ctx.db
       .query('vendorShutdownControls')
       .withIndex('by_vendorId', (q) => q.eq('vendorId', args.vendorId))
@@ -452,6 +513,7 @@ export const activateShutdown = internalMutation({
     reason: v.string(),
     activatedBy: v.string(),
   },
+  returns: v.string(),
   handler: async (ctx, args) => {
     const now = Date.now();
     const shutdownId = newId('shd');
@@ -485,6 +547,7 @@ export const activateShutdown = internalMutation({
 
 export const releaseShutdown = internalMutation({
   args: { shutdownId: v.string(), releasedBy: v.string() },
+  returns: v.string(),
   handler: async (ctx, args) => {
     const record = await ctx.db
       .query('vendorShutdownControls')

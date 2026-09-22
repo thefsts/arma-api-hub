@@ -2,18 +2,26 @@
 //
 // Credential lifecycle (rotation, activation, retirement, revocation) is a
 // privileged operation exposed only as internal mutations. Records hold key
-// references and lifecycle state, never key material.
+// references and lifecycle state, never key material. Phase 0: reads are
+// INTERNAL queries that enforce the caller's server-derived service scope.
 
 import { v } from 'convex/values';
-import { internalMutation, query } from './_generated/server';
+import { internalMutation, internalQuery } from './_generated/server';
 import { credentialStateValidator } from './lib/validators';
-import { requireRole } from './lib/authz';
+import {
+  filterByServiceScope,
+  requireAuthorizationContext,
+  requireServiceScope,
+} from './lib/authz';
+import { credentialVersionDoc } from './lib/returns';
 import { fail } from './lib/errors';
 
-export const listByService = query({
+export const listByService = internalQuery({
   args: { serviceId: v.string(), limit: v.optional(v.number()) },
+  returns: v.array(credentialVersionDoc),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    requireServiceScope(authz, args.serviceId);
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
     return await ctx.db
       .query('credentialVersions')
@@ -22,15 +30,19 @@ export const listByService = query({
   },
 });
 
-export const getByKeyId = query({
+export const getByKeyId = internalQuery({
   args: { keyId: v.string() },
+  returns: v.union(credentialVersionDoc, v.null()),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
-    return await ctx.db
+    const authz = await requireAuthorizationContext(ctx);
+    const record = await ctx.db
       .query('credentialVersions')
       .withIndex('by_keyId', (q) => q.eq('keyId', args.keyId))
       .order('desc')
       .first();
+    if (record === null) return null;
+    requireServiceScope(authz, record.serviceId);
+    return record;
   },
 });
 
@@ -40,6 +52,7 @@ export const createVersion = internalMutation({
     keyId: v.string(),
     algorithm: v.string(),
   },
+  returns: v.number(),
   handler: async (ctx, args) => {
     const latest = await ctx.db
       .query('credentialVersions')
@@ -61,6 +74,7 @@ export const createVersion = internalMutation({
 
 export const activate = internalMutation({
   args: { keyId: v.string(), version: v.number() },
+  returns: v.id('credentialVersions'),
   handler: async (ctx, args) => {
     const record = await ctx.db
       .query('credentialVersions')
@@ -79,6 +93,7 @@ export const activate = internalMutation({
 
 export const retire = internalMutation({
   args: { keyId: v.string(), version: v.number() },
+  returns: v.id('credentialVersions'),
   handler: async (ctx, args) => {
     const record = await ctx.db
       .query('credentialVersions')
@@ -97,6 +112,7 @@ export const retire = internalMutation({
 
 export const revoke = internalMutation({
   args: { keyId: v.string(), version: v.number(), reason: v.string() },
+  returns: v.id('credentialVersions'),
   handler: async (ctx, args) => {
     const record = await ctx.db
       .query('credentialVersions')
@@ -117,14 +133,16 @@ export const revoke = internalMutation({
   },
 });
 
-export const listByState = query({
+export const listByState = internalQuery({
   args: { state: credentialStateValidator, limit: v.optional(v.number()) },
+  returns: v.array(credentialVersionDoc),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
-    return await ctx.db
+    const rows = await ctx.db
       .query('credentialVersions')
       .withIndex('by_state', (q) => q.eq('state', args.state))
       .take(limit);
+    return filterByServiceScope(authz, rows, (row) => row.serviceId);
   },
 });

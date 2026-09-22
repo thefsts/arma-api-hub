@@ -45,6 +45,9 @@ jobs:
       - name: Typecheck (workspace)
         run: pnpm typecheck
 
+      - name: Convex guardrails
+        run: pnpm convex:guardrails
+
       - name: Test
         run: pnpm test
 

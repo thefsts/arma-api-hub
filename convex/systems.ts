@@ -1,33 +1,40 @@
 // Systems registry: FSTS-owned products, client systems, and partners.
 //
-// Reads are public queries guarded by role. Writes are privileged internal
+// Phase 0: every read is an INTERNAL query (see
+// docs/security/ADR-0005-authentication-decision.md). Reads enforce the
+// caller's server-derived system scope; writes are privileged internal
 // mutations. PlayRaise is registered as CLIENT_OWNED, never FSTS_OWNED.
 
 import { v } from 'convex/values';
-import { internalMutation, query } from './_generated/server';
+import { internalMutation, internalQuery } from './_generated/server';
 import {
   classificationValidator,
   environmentValidator,
   lifecycleValidator,
   ownershipValidator,
 } from './lib/validators';
-import { requireRole } from './lib/authz';
+import { filterBySystemScope, requireAuthorizationContext, requireSystemScope } from './lib/authz';
+import { systemDoc } from './lib/returns';
 import { fail } from './lib/errors';
 import { newId } from './lib/ids';
 
-export const list = query({
+export const list = internalQuery({
   args: { limit: v.optional(v.number()) },
+  returns: v.array(systemDoc),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
-    return await ctx.db.query('systems').take(limit);
+    const rows = await ctx.db.query('systems').take(limit);
+    return filterBySystemScope(authz, rows, (row) => row.systemId);
   },
 });
 
-export const get = query({
+export const get = internalQuery({
   args: { systemId: v.string() },
+  returns: v.union(systemDoc, v.null()),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    requireSystemScope(authz, args.systemId);
     return await ctx.db
       .query('systems')
       .withIndex('by_systemId', (q) => q.eq('systemId', args.systemId))
@@ -35,15 +42,17 @@ export const get = query({
   },
 });
 
-export const listByOwnership = query({
+export const listByOwnership = internalQuery({
   args: { ownership: ownershipValidator, limit: v.optional(v.number()) },
+  returns: v.array(systemDoc),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
-    return await ctx.db
+    const rows = await ctx.db
       .query('systems')
       .withIndex('by_ownership', (q) => q.eq('ownership', args.ownership))
       .take(limit);
+    return filterBySystemScope(authz, rows, (row) => row.systemId);
   },
 });
 
@@ -58,6 +67,7 @@ export const create = internalMutation({
     owner: v.string(),
     dataClassification: classificationValidator,
   },
+  returns: v.string(),
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query('systems')
@@ -87,6 +97,7 @@ export const create = internalMutation({
 
 export const updateLifecycle = internalMutation({
   args: { systemId: v.string(), lifecycle: lifecycleValidator },
+  returns: v.string(),
   handler: async (ctx, args) => {
     const record = await ctx.db
       .query('systems')

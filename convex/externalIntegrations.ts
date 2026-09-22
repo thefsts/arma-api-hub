@@ -2,32 +2,38 @@
 //
 // External and client systems are registered separately from FSTS-owned
 // products. PlayRaise, when connected, is registered here as CLIENT_OWNED.
+// Phase 0: reads are INTERNAL queries gated by a durable-record role check.
 
 import { v } from 'convex/values';
-import { internalMutation, query } from './_generated/server';
+import { internalMutation, internalQuery } from './_generated/server';
 import {
   classificationValidator,
   environmentValidator,
   lifecycleValidator,
   ownershipValidator,
 } from './lib/validators';
-import { requireRole } from './lib/authz';
+import { requireAuthorizationContext, requireRole } from './lib/authz';
+import { externalIntegrationDoc } from './lib/returns';
 import { fail } from './lib/errors';
 import { newId } from './lib/ids';
 
-export const list = query({
+export const list = internalQuery({
   args: { limit: v.optional(v.number()) },
+  returns: v.array(externalIntegrationDoc),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    requireRole(authz, ['admin', 'operator', 'viewer']);
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
     return await ctx.db.query('externalIntegrations').take(limit);
   },
 });
 
-export const get = query({
+export const get = internalQuery({
   args: { integrationId: v.string() },
+  returns: v.union(externalIntegrationDoc, v.null()),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    requireRole(authz, ['admin', 'operator', 'viewer']);
     return await ctx.db
       .query('externalIntegrations')
       .withIndex('by_integrationId', (q) => q.eq('integrationId', args.integrationId))
@@ -46,6 +52,7 @@ export const register = internalMutation({
     dataClassification: classificationValidator,
     destinationAllowList: v.array(v.string()),
   },
+  returns: v.string(),
   handler: async (ctx, args) => {
     const integrationId = args.integrationId ?? newId('ext');
     const existing = await ctx.db
@@ -74,6 +81,7 @@ export const register = internalMutation({
 
 export const updateLifecycle = internalMutation({
   args: { integrationId: v.string(), lifecycle: lifecycleValidator },
+  returns: v.string(),
   handler: async (ctx, args) => {
     const record = await ctx.db
       .query('externalIntegrations')

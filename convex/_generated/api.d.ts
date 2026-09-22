@@ -27,6 +27,7 @@ import type * as lib_cost from "../lib/cost.js";
 import type * as lib_errors from "../lib/errors.js";
 import type * as lib_ids from "../lib/ids.js";
 import type * as lib_redaction from "../lib/redaction.js";
+import type * as lib_returns from "../lib/returns.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as nonces from "../nonces.js";
 import type * as policies from "../policies.js";
@@ -62,6 +63,7 @@ declare const fullApi: ApiFromModules<{
   "lib/errors": typeof lib_errors;
   "lib/ids": typeof lib_ids;
   "lib/redaction": typeof lib_redaction;
+  "lib/returns": typeof lib_returns;
   "lib/validators": typeof lib_validators;
   nonces: typeof nonces;
   policies: typeof policies;

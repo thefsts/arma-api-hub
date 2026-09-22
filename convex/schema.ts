@@ -17,6 +17,8 @@ import { v } from 'convex/values';
 import {
   anomalyStatusValidator,
   auditOutcomeValidator,
+  authorizationStateValidator,
+  capabilityStatusValidator,
   classificationValidator,
   connectorStatusValidator,
   contractKindValidator,
@@ -35,6 +37,8 @@ import {
   lifecycleValidator,
   optimizationKindValidator,
   ownershipValidator,
+  principalTypeValidator,
+  roleValidator,
   shutdownStatusValidator,
   sourceHubValidator,
   thresholdStatusValidator,
@@ -137,10 +141,15 @@ export default defineSchema({
     .index('by_keyId_version', ['keyId', 'version']),
 
   // Scoped capability grants.
+  //
+  // `status` is the materialized, deterministic view of the grant. Expiration
+  // is applied by a scheduled internal mutation (`capabilities.expireGrants`)
+  // so that reads never evaluate wall-clock time inside a query handler.
   capabilityGrants: defineTable({
     serviceId: v.string(),
     capability: v.string(),
     scope: v.string(),
+    status: capabilityStatusValidator,
     grantedAt: v.number(),
     grantedBy: v.string(),
     expiresAt: v.optional(v.number()),
@@ -148,7 +157,39 @@ export default defineSchema({
   })
     .index('by_serviceId', ['serviceId'])
     .index('by_capability', ['capability'])
-    .index('by_serviceId_capability', ['serviceId', 'capability']),
+    .index('by_serviceId_capability', ['serviceId', 'capability'])
+    .index('by_status', ['status'])
+    .index('by_status_expiresAt', ['status', 'expiresAt']),
+
+  // Durable authorization bindings.
+  //
+  // This is the single source of truth for what a principal (a human subject or
+  // a service identity) is permitted to access. Authorization is NEVER derived
+  // from caller-supplied claims or caller-supplied scope: the authenticated
+  // subject/service is looked up here and the resulting scope is enforced.
+  //
+  // `global` is the explicit, audited FSTS owner/admin grant. It is the ONLY
+  // way to obtain cross-tenant / cross-service access, and every global access
+  // is audited.
+  principalAuthorizations: defineTable({
+    principalId: v.string(),
+    principalType: principalTypeValidator,
+    roles: v.array(roleValidator),
+    global: v.boolean(),
+    systemIds: v.array(v.string()),
+    serviceIds: v.array(v.string()),
+    tenantIds: v.array(v.string()),
+    customerRefs: v.array(v.string()),
+    capabilities: v.array(v.string()),
+    environments: v.array(environmentValidator),
+    state: authorizationStateValidator,
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_principalId', ['principalId'])
+    .index('by_principalType', ['principalType'])
+    .index('by_state', ['state'])
+    .index('by_principalId_state', ['principalId', 'state']),
 
   // Connection policies: destination allow lists and classification ceilings.
   connectionPolicies: defineTable({

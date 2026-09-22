@@ -1,20 +1,24 @@
 // Service identities.
 //
 // A service identity is a key *reference*. Key material is never stored here;
-// it lives in a secrets manager. Creating and revoking identities are
-// privileged internal operations.
+// it lives in a secrets manager. Phase 0: reads are INTERNAL queries that
+// enforce the caller's server-derived service scope; creating and revoking
+// identities are privileged internal operations.
 
 import { v } from 'convex/values';
-import { internalMutation, query } from './_generated/server';
+import { internalMutation, internalQuery } from './_generated/server';
 import { credentialStateValidator } from './lib/validators';
-import { requireRole } from './lib/authz';
+import { requireAuthorizationContext, requireServiceScope } from './lib/authz';
+import { serviceIdentityDoc } from './lib/returns';
 import { fail } from './lib/errors';
 import { newId } from './lib/ids';
 
-export const listByService = query({
+export const listByService = internalQuery({
   args: { serviceId: v.string(), limit: v.optional(v.number()) },
+  returns: v.array(serviceIdentityDoc),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    requireServiceScope(authz, args.serviceId);
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
     return await ctx.db
       .query('serviceIdentities')
@@ -23,14 +27,18 @@ export const listByService = query({
   },
 });
 
-export const getByKeyId = query({
+export const getByKeyId = internalQuery({
   args: { keyId: v.string() },
+  returns: v.union(serviceIdentityDoc, v.null()),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
-    return await ctx.db
+    const authz = await requireAuthorizationContext(ctx);
+    const record = await ctx.db
       .query('serviceIdentities')
       .withIndex('by_keyId', (q) => q.eq('keyId', args.keyId))
       .first();
+    if (record === null) return null;
+    requireServiceScope(authz, record.serviceId);
+    return record;
   },
 });
 
@@ -40,6 +48,7 @@ export const create = internalMutation({
     keyId: v.optional(v.string()),
     algorithm: v.string(),
   },
+  returns: v.string(),
   handler: async (ctx, args) => {
     const keyId = args.keyId ?? newId('key');
     const existing = await ctx.db
@@ -62,6 +71,7 @@ export const create = internalMutation({
 
 export const setState = internalMutation({
   args: { keyId: v.string(), state: credentialStateValidator },
+  returns: v.string(),
   handler: async (ctx, args) => {
     const record = await ctx.db
       .query('serviceIdentities')
@@ -81,6 +91,7 @@ export const setState = internalMutation({
 
 export const revoke = internalMutation({
   args: { keyId: v.string(), reason: v.string() },
+  returns: v.string(),
   handler: async (ctx, args) => {
     const record = await ctx.db
       .query('serviceIdentities')

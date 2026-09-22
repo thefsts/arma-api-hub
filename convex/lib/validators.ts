@@ -202,3 +202,38 @@ export const optimizationKindValidator = v.union(
 
 /** Cost export target. */
 export const costExportTargetValidator = v.union(v.literal('REGIVANTA'), v.literal('AI_HUB'));
+
+// --- Authorization ---
+
+/**
+ * Caller role. Roles are NEVER trusted from raw client claims: they are
+ * resolved from durable authorization records after the caller's identity has
+ * been verified against the configured trusted issuer.
+ */
+export const roleValidator = v.union(
+  v.literal('admin'),
+  v.literal('operator'),
+  v.literal('service'),
+  v.literal('viewer'),
+);
+
+/** Principal kind for a durable authorization binding. */
+export const principalTypeValidator = v.union(v.literal('HUMAN'), v.literal('SERVICE'));
+
+/** Lifecycle state of a durable authorization binding. */
+export const authorizationStateValidator = v.union(
+  v.literal('ACTIVE'),
+  v.literal('SUSPENDED'),
+  v.literal('REVOKED'),
+);
+
+/**
+ * Explicit status of a capability grant. Expiration is materialized into this
+ * field by a scheduled internal mutation so that reads stay deterministic and
+ * reactive (no `Date.now()` inside a query handler).
+ */
+export const capabilityStatusValidator = v.union(
+  v.literal('ACTIVE'),
+  v.literal('EXPIRED'),
+  v.literal('REVOKED'),
+);

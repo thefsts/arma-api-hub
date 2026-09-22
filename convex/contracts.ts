@@ -1,32 +1,40 @@
 // Contract definitions and versions.
 //
-// Contracts are versioned and replaceable. Publishing, deprecating, and
-// retiring versions are privileged internal operations.
+// Phase 0: every read is an INTERNAL query (see
+// docs/security/ADR-0005-authentication-decision.md). Contract definitions are
+// shared control-plane metadata (they are not tenant- or service-scoped), so
+// reads require an authorized principal holding a permitted role. Publishing,
+// deprecating, and retiring versions are privileged internal operations.
 
 import { v } from 'convex/values';
-import { internalMutation, query } from './_generated/server';
+import { internalMutation, internalQuery } from './_generated/server';
 import {
   classificationValidator,
   contractKindValidator,
   contractStatusValidator,
 } from './lib/validators';
-import { requireRole } from './lib/authz';
+import { requireAuthorizationContext, requireRole } from './lib/authz';
+import { contractDefinitionDoc, contractVersionDoc } from './lib/returns';
 import { fail } from './lib/errors';
 import { newId } from './lib/ids';
 
-export const listDefinitions = query({
+export const listDefinitions = internalQuery({
   args: { limit: v.optional(v.number()) },
+  returns: v.array(contractDefinitionDoc),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    requireRole(authz, ['admin', 'operator', 'viewer']);
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
     return await ctx.db.query('contractDefinitions').take(limit);
   },
 });
 
-export const getDefinition = query({
+export const getDefinition = internalQuery({
   args: { contractId: v.string() },
+  returns: v.union(contractDefinitionDoc, v.null()),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    requireRole(authz, ['admin', 'operator', 'viewer']);
     return await ctx.db
       .query('contractDefinitions')
       .withIndex('by_contractId', (q) => q.eq('contractId', args.contractId))
@@ -34,10 +42,12 @@ export const getDefinition = query({
   },
 });
 
-export const listVersions = query({
+export const listVersions = internalQuery({
   args: { contractId: v.string(), limit: v.optional(v.number()) },
+  returns: v.array(contractVersionDoc),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    requireRole(authz, ['admin', 'operator', 'viewer']);
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
     return await ctx.db
       .query('contractVersions')
@@ -55,6 +65,7 @@ export const define = internalMutation({
     owner: v.string(),
     dataClassification: classificationValidator,
   },
+  returns: v.string(),
   handler: async (ctx, args) => {
     const contractId = args.contractId ?? newId('ctr');
     const existing = await ctx.db
@@ -86,6 +97,7 @@ export const publishVersion = internalMutation({
     schemaVersion: v.string(),
     checksum: v.string(),
   },
+  returns: v.boolean(),
   handler: async (ctx, args) => {
     const definition = await ctx.db
       .query('contractDefinitions')
@@ -126,6 +138,7 @@ export const setVersionStatus = internalMutation({
     version: v.string(),
     status: contractStatusValidator,
   },
+  returns: v.boolean(),
   handler: async (ctx, args) => {
     const record = await ctx.db
       .query('contractVersions')

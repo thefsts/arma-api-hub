@@ -1,33 +1,44 @@
 // Services registry.
 //
 // A service may send or receive protected events only when it is registered,
-// approved, active, and holds the required scoped capability. Reads are public
-// queries guarded by role; writes are privileged internal mutations.
+// approved, active, and holds the required scoped capability. Phase 0: reads
+// are INTERNAL queries that enforce the caller's server-derived service scope;
+// writes are privileged internal mutations.
 
 import { v } from 'convex/values';
-import { internalMutation, query } from './_generated/server';
+import { internalMutation, internalQuery } from './_generated/server';
 import {
   classificationValidator,
   environmentValidator,
   lifecycleValidator,
 } from './lib/validators';
-import { requireRole } from './lib/authz';
+import {
+  filterByServiceScope,
+  requireAuthorizationContext,
+  requireServiceScope,
+  requireSystemScope,
+} from './lib/authz';
+import { serviceDoc } from './lib/returns';
 import { fail } from './lib/errors';
 import { newId } from './lib/ids';
 
-export const list = query({
+export const list = internalQuery({
   args: { limit: v.optional(v.number()) },
+  returns: v.array(serviceDoc),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
-    return await ctx.db.query('services').take(limit);
+    const rows = await ctx.db.query('services').take(limit);
+    return filterByServiceScope(authz, rows, (row) => row.serviceId);
   },
 });
 
-export const get = query({
+export const get = internalQuery({
   args: { serviceId: v.string() },
+  returns: v.union(serviceDoc, v.null()),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    requireServiceScope(authz, args.serviceId);
     return await ctx.db
       .query('services')
       .withIndex('by_serviceId', (q) => q.eq('serviceId', args.serviceId))
@@ -35,15 +46,18 @@ export const get = query({
   },
 });
 
-export const listBySystem = query({
+export const listBySystem = internalQuery({
   args: { systemId: v.string(), limit: v.optional(v.number()) },
+  returns: v.array(serviceDoc),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    requireSystemScope(authz, args.systemId);
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
-    return await ctx.db
+    const rows = await ctx.db
       .query('services')
       .withIndex('by_systemId', (q) => q.eq('systemId', args.systemId))
       .take(limit);
+    return filterByServiceScope(authz, rows, (row) => row.serviceId);
   },
 });
 
@@ -60,6 +74,7 @@ export const register = internalMutation({
     owner: v.string(),
     dataClassification: classificationValidator,
   },
+  returns: v.string(),
   handler: async (ctx, args) => {
     const serviceId = args.serviceId ?? newId('svc');
     const existing = await ctx.db
@@ -91,6 +106,7 @@ export const register = internalMutation({
 
 export const updateLifecycle = internalMutation({
   args: { serviceId: v.string(), lifecycle: lifecycleValidator },
+  returns: v.string(),
   handler: async (ctx, args) => {
     const record = await ctx.db
       .query('services')
@@ -106,6 +122,7 @@ export const updateLifecycle = internalMutation({
 
 export const setKillSwitchEngaged = internalMutation({
   args: { serviceId: v.string(), engaged: v.boolean() },
+  returns: v.string(),
   handler: async (ctx, args) => {
     const record = await ctx.db
       .query('services')

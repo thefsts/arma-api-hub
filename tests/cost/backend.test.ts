@@ -3,21 +3,24 @@
 // Exercises the Convex cost functions in an in-memory backend. Every scenario
 // is deterministic: no wall-clock dependence, no network, no real vendors.
 
-import { convexTest } from 'convex-test';
 import { describe, expect, it } from 'vitest';
-import schema from '../../convex/schema.js';
-import { api, internal } from '../../convex/_generated/api.js';
+import { internal } from '../../convex/_generated/api.js';
+import {
+  GLOBAL_ADMIN,
+  identity,
+  seedGlobalAdmin,
+  setup,
+  type TestConvex,
+} from '../convex/helpers.js';
 
-const modules = import.meta.glob('../../convex/**/*.*s');
-
-const admin = { subject: 'test-admin', roles: ['admin'] };
-
-function setup() {
-  return convexTest(schema, modules);
+/** Seed the global FSTS owner/admin binding and return its identity. */
+async function withGlobalAdmin(t: TestConvex) {
+  await seedGlobalAdmin(t);
+  return t.withIdentity(identity(GLOBAL_ADMIN));
 }
 
 /** Register a synthetic vendor and return its id. */
-async function seedVendor(t: ReturnType<typeof setup>, slug = 'example-vendor') {
+async function seedVendor(t: TestConvex, slug = 'example-vendor') {
   return await t.mutation(internal.costVendors.registerVendor, {
     name: 'Example Vendor',
     slug,
@@ -141,7 +144,8 @@ describe('cost events — authoritative charge and deduplication', () => {
       idempotencyKey: 'idem-00000019',
       vendorId,
     });
-    const row = await t.withIdentity(admin).query(api.costEvents.getCostEvent, {
+    const admin = await withGlobalAdmin(t);
+    const row = await admin.query(internal.costEvents.getCostEvent, {
       costEventId: 'cev_00000019',
     });
     expect(row?.correlationId).toBe('corr-example-00000001');
@@ -170,11 +174,12 @@ describe('vendor price versions', () => {
       pricingSource: 'rate-card-v2',
       effectiveFrom: 2000,
     });
-    const at1500 = await t.withIdentity(admin).query(api.costVendors.resolvePriceVersion, {
+    const admin = await withGlobalAdmin(t);
+    const at1500 = await admin.query(internal.costVendors.resolvePriceVersion, {
       vendorId,
       at: 1500,
     });
-    const at2500 = await t.withIdentity(admin).query(api.costVendors.resolvePriceVersion, {
+    const at2500 = await admin.query(internal.costVendors.resolvePriceVersion, {
       vendorId,
       at: 2500,
     });
@@ -322,7 +327,8 @@ describe('emergency vendor shutdown', () => {
       reason: 'Emergency cost containment.',
       activatedBy: 'test-admin',
     });
-    const active = await t.withIdentity(admin).query(api.costControls.isVendorShutdown, {
+    const admin = await withGlobalAdmin(t);
+    const active = await admin.query(internal.costControls.isVendorShutdown, {
       vendorId,
     });
     expect(active).toBe(true);
@@ -331,7 +337,7 @@ describe('emergency vendor shutdown', () => {
       shutdownId,
       releasedBy: 'test-admin',
     });
-    const released = await t.withIdentity(admin).query(api.costControls.isVendorShutdown, {
+    const released = await admin.query(internal.costControls.isVendorShutdown, {
       vendorId,
     });
     expect(released).toBe(false);

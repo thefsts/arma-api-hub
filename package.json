@@ -22,7 +22,8 @@
     "test:coverage": "vitest run --coverage",
     "secret:scan": "node scripts/secret-scan.mjs",
     "deps:check": "node scripts/dependency-check.mjs",
-    "validate": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm secret:scan && pnpm deps:check"
+    "convex:guardrails": "node scripts/convex-guardrails.mjs",
+    "validate": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm convex:guardrails && pnpm test && pnpm build && pnpm secret:scan && pnpm deps:check"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

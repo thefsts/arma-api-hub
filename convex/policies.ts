@@ -3,18 +3,26 @@
 // A connection policy binds a service to a destination with an allow decision,
 // a classification ceiling, and a rate limit. Policies are fail-closed: a
 // destination with no policy is not allowed.
+//
+// Phase 0: every read is an INTERNAL query (see
+// docs/security/ADR-0005-authentication-decision.md). Policies are scoped to a
+// service, so reads require the caller's server-derived service scope. Upserts
+// are privileged internal operations.
 
 import { v } from 'convex/values';
-import { internalMutation, query } from './_generated/server';
+import { internalMutation, internalQuery } from './_generated/server';
 import { classificationValidator } from './lib/validators';
-import { requireRole } from './lib/authz';
+import { requireAuthorizationContext, requireServiceScope } from './lib/authz';
+import { connectionPolicyDoc } from './lib/returns';
 import { fail } from './lib/errors';
 import { newId } from './lib/ids';
 
-export const listByService = query({
+export const listByService = internalQuery({
   args: { serviceId: v.string(), limit: v.optional(v.number()) },
+  returns: v.array(connectionPolicyDoc),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    requireServiceScope(authz, args.serviceId);
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
     return await ctx.db
       .query('connectionPolicies')
@@ -23,10 +31,12 @@ export const listByService = query({
   },
 });
 
-export const getForDestination = query({
+export const getForDestination = internalQuery({
   args: { serviceId: v.string(), destination: v.string() },
+  returns: v.union(connectionPolicyDoc, v.null()),
   handler: async (ctx, args) => {
-    await requireRole(ctx, ['admin', 'operator', 'viewer']);
+    const authz = await requireAuthorizationContext(ctx);
+    requireServiceScope(authz, args.serviceId);
     return await ctx.db
       .query('connectionPolicies')
       .withIndex('by_serviceId_destination', (q) =>
@@ -44,6 +54,7 @@ export const upsert = internalMutation({
     classificationCeiling: classificationValidator,
     rateLimitPerMinute: v.number(),
   },
+  returns: v.string(),
   handler: async (ctx, args) => {
     if (args.rateLimitPerMinute < 0) {
       fail('VALIDATION_FAILED', 'Rate limit must not be negative.');
