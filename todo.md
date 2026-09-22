@@ -54,6 +54,6 @@
 - [x] npx convex dev --once
 
 ## J. Commit + report
-- [ ] Commit checkpoints
-- [ ] Push branch (PR #1 stays open/unmerged)
-- [ ] Final correction report
+- [x] Commit checkpoints
+- [x] Push branch (PR #1 stays open/unmerged)
+- [x] Final correction report
