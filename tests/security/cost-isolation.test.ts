@@ -142,6 +142,22 @@ describe('cost isolation — service boundaries', () => {
       a.query(internal.idempotency.get, { serviceId: SVC_B, idempotencyKey: 'k' }),
     ).rejects.toThrow(/FORBIDDEN|bound/i);
   });
+
+  it('a service cannot inspect service B costs through an over-broad durable record', async () => {
+    const t = setup();
+    const vendorId = await seedVendor(t);
+    await seedCostEvent(t, vendorId, 'hostile-binding', { serviceId: SVC_B });
+    await seedAuthorization(t, {
+      principalId: SVC_A,
+      principalType: 'SERVICE',
+      roles: ['service'],
+      serviceIds: [SVC_A, SVC_B],
+    });
+    const a = t.withIdentity(identity(SVC_A));
+    await expect(
+      a.query(internal.costEvents.getCostEvent, { costEventId: 'cev-hostile-binding' }),
+    ).rejects.toThrow(/FORBIDDEN|authorized/i);
+  });
 });
 
 describe('cost isolation — role scope limits', () => {

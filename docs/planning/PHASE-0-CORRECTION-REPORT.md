@@ -29,9 +29,9 @@ committed. The private dashboard URL does not appear in any tracked file.
 
 ## 2. Schema
 
-`convex/schema.ts` defines 36 tables with 160 indexes. The 20 core tables are
+`convex/schema.ts` defines 37 tables with 166 indexes. The 21 core tables are
 `systems`, `services`, `externalIntegrations`, `serviceIdentities`,
-`credentialVersions`, `capabilityGrants`, `connectionPolicies`,
+`credentialVersions`, `capabilityGrants`, `principalAuthorizations`, `connectionPolicies`,
 `contractDefinitions`, `contractVersions`, `webhookEndpoints`,
 `webhookDeliveries`, `deliveryAttempts`, `idempotencyRecords`, `nonceRecords`,
 `eventRecords`, `receiptRecords`, `connectorHealth`, `connectorIncidents`,
@@ -57,7 +57,7 @@ guard stores vendor references and price versions, never vendor credentials.
 
 ## 3. Functions
 
-The backend exposes 120 functions across 20 modules. Public queries and
+The backend exposes 121 functions across 20 modules. Public queries and
 mutations are minimal and authorization-aware; privileged lifecycle, retry,
 receipt, audit, credential, and cost operations are internal functions.
 

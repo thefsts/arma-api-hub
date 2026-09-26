@@ -14,6 +14,7 @@ import { v } from 'convex/values';
 import { internalMutation, internalQuery } from './_generated/server';
 import { deliveryStatusValidator, failureClassValidator } from './lib/validators';
 import {
+  canAccessService,
   filterByServiceScope,
   requireAuthorizationContext,
   requireServiceScope,
@@ -263,7 +264,7 @@ export const listDueDeliveries = internalQuery({
     const result: typeof rows = [];
     for (const row of rows) {
       const serviceId = await resolveEndpointServiceId(ctx, row.endpointId);
-      if (serviceId !== null && (authz.global || authz.serviceIds.has(serviceId))) {
+      if (serviceId !== null && canAccessService(authz, serviceId)) {
         result.push(row);
       }
     }

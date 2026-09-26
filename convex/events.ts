@@ -10,18 +10,19 @@
 import { v } from 'convex/values';
 import { internalMutation, internalQuery } from './_generated/server';
 import { classificationValidator } from './lib/validators';
-import { requireAuthorizationContext, requireRole } from './lib/authz';
+import {
+  canAccessService,
+  requireAuthorizationContext,
+  requireRole,
+  type AuthorizationContext,
+} from './lib/authz';
 import { eventRecordDoc } from './lib/returns';
 import { newId } from './lib/ids';
 
 type EventRow = { source: string; destination: string };
 
-function canSeeEvent(
-  authz: { global: boolean; serviceIds: ReadonlySet<string> },
-  row: EventRow,
-): boolean {
-  if (authz.global) return true;
-  return authz.serviceIds.has(row.source) || authz.serviceIds.has(row.destination);
+function canSeeEvent(authz: AuthorizationContext, row: EventRow): boolean {
+  return canAccessService(authz, row.source) || canAccessService(authz, row.destination);
 }
 
 export const get = internalQuery({

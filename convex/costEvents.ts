@@ -20,7 +20,11 @@
 import { v } from 'convex/values';
 import { internalMutation, internalQuery } from './_generated/server';
 import { costStatusValidator, sourceHubValidator, usageUnitValidator } from './lib/validators';
-import { requireAuthorizationContext, type AuthorizationContext } from './lib/authz';
+import {
+  canAccessService,
+  requireAuthorizationContext,
+  type AuthorizationContext,
+} from './lib/authz';
 import { apiCostEventDoc, apiUsageRecordDoc } from './lib/returns';
 import { fail } from './lib/errors';
 import { newId } from './lib/ids';
@@ -34,7 +38,7 @@ type ScopedRow = { serviceId: string; tenantId?: string; customerRef?: string };
  */
 function canAccessCostRow(authz: AuthorizationContext, row: ScopedRow): boolean {
   if (authz.global) return true;
-  if (!authz.serviceIds.has(row.serviceId)) return false;
+  if (!canAccessService(authz, row.serviceId)) return false;
   if (row.tenantId !== undefined && !authz.tenantIds.has(row.tenantId)) return false;
   if (row.customerRef !== undefined && !authz.customerRefs.has(row.customerRef)) return false;
   return true;

@@ -81,6 +81,11 @@ export async function resolveAuthorizationContext(
     )
     .first();
   if (!record) return null;
+  // A service identity can never be a cross-scope administrator. Treat an
+  // invalid durable record as unauthorised instead of allowing `global` to
+  // bypass service binding. Human administrators remain explicitly modeled
+  // through HUMAN + global records.
+  if (record.principalType === 'SERVICE' && record.global) return null;
   return {
     principalId: record.principalId,
     principalType: record.principalType,
@@ -120,6 +125,9 @@ export function canAccessSystem(ctx: AuthorizationContext, systemId: string): bo
 }
 
 export function canAccessService(ctx: AuthorizationContext, serviceId: string): boolean {
+  // A service principal is cryptographically bound to its own subject. Its
+  // durable serviceIds list cannot delegate it access to another service.
+  if (ctx.principalType === 'SERVICE') return ctx.principalId === serviceId;
   return ctx.global || ctx.serviceIds.has(serviceId);
 }
 
@@ -199,8 +207,13 @@ export function requireEnvironment(ctx: AuthorizationContext, environment: strin
  * `serviceId` is rejected, even when it holds the `service` role.
  */
 export function requireServiceBinding(ctx: AuthorizationContext, serviceId: string): void {
+  if (ctx.principalType === 'SERVICE') {
+    if (ctx.principalId === serviceId) return;
+    fail('FORBIDDEN', 'The service caller is not bound to the requested service identity.', {
+      serviceId,
+    });
+  }
   if (ctx.global) return;
-  if (ctx.principalType === 'SERVICE' && ctx.principalId === serviceId) return;
   if (ctx.serviceIds.has(serviceId)) return;
   fail('FORBIDDEN', 'The caller is not bound to the requested service identity.', { serviceId });
 }
@@ -216,6 +229,9 @@ export function filterByServiceScope<T>(
   rows: readonly T[],
   getServiceId: (row: T) => string,
 ): T[] {
+  if (ctx.principalType === 'SERVICE') {
+    return rows.filter((row) => ctx.principalId === getServiceId(row));
+  }
   if (ctx.global) return [...rows];
   return rows.filter((row) => ctx.serviceIds.has(getServiceId(row)));
 }
@@ -280,11 +296,11 @@ export async function filterByConnectorScope<T>(
   rows: readonly T[],
   getConnectorId: (row: T) => string,
 ): Promise<T[]> {
-  if (authz.global) return [...rows];
+  if (authz.principalType === 'HUMAN' && authz.global) return [...rows];
   const result: T[] = [];
   for (const row of rows) {
     const serviceId = await resolveConnectorServiceId(ctx, getConnectorId(row));
-    if (serviceId !== null && authz.serviceIds.has(serviceId)) {
+    if (serviceId !== null && canAccessService(authz, serviceId)) {
       result.push(row);
     }
   }

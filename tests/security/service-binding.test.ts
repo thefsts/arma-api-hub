@@ -53,6 +53,55 @@ describe('service-identity binding — idempotency records', () => {
   });
 });
 
+describe('service-identity binding — hostile durable records', () => {
+  it('rejects service B even when service A durable scope incorrectly lists service B', async () => {
+    const t = setup();
+    await seedAuthorization(t, {
+      principalId: SVC_A,
+      principalType: 'SERVICE',
+      roles: ['service'],
+      serviceIds: [SVC_A, SVC_B],
+    });
+    const a = t.withIdentity(identity(SVC_A));
+    await expect(
+      a.query(internal.idempotency.get, { serviceId: SVC_B, idempotencyKey: 'hostile-scope' }),
+    ).rejects.toThrow(/FORBIDDEN|bound/i);
+    await expect(
+      a.query(internal.capabilities.listByService, { serviceId: SVC_B }),
+    ).rejects.toThrow(/FORBIDDEN|authorized/i);
+    await expect(a.query(internal.credentials.listByService, { serviceId: SVC_B })).rejects.toThrow(
+      /FORBIDDEN|authorized/i,
+    );
+    await expect(
+      a.query(internal.webhooks.listEndpointsByService, { serviceId: SVC_B }),
+    ).rejects.toThrow(/FORBIDDEN|authorized/i);
+
+    await t.mutation(internal.connectors.reportHealth, {
+      connectorId: 'hostile-con-b',
+      serviceId: SVC_B,
+      status: 'HEALTHY',
+    });
+    await expect(
+      a.query(internal.connectors.getHealth, { connectorId: 'hostile-con-b' }),
+    ).rejects.toThrow(/FORBIDDEN|authorized/i);
+  });
+
+  it('rejects a service principal whose durable record grants global access', async () => {
+    const t = setup();
+    await seedAuthorization(t, {
+      principalId: SVC_A,
+      principalType: 'SERVICE',
+      roles: ['service'],
+      global: true,
+      serviceIds: [SVC_A],
+    });
+    const a = t.withIdentity(identity(SVC_A));
+    await expect(
+      a.query(internal.idempotency.get, { serviceId: SVC_A, idempotencyKey: 'global-service' }),
+    ).rejects.toThrow(/FORBIDDEN|binding/i);
+  });
+});
+
 describe('service-identity binding — nonce records', () => {
   it('service A cannot record a nonce for service B', async () => {
     const t = setup();
