@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "manifestId": "compliance-core-integration-intake",
+  "phase": "Phase 7",
+  "chat": "Chat 5",
+  "status": "PENDING_DEPENDENCY",
+  "description": "Required Phase 7 Chat 1-4 artifacts the ARMA API Hub consumes to finalize the governed Compliance Core connection. This manifest lists artifacts by name only. It does NOT contain, restate, or invent any contract content, field, version, or operation. Content is owned by the producing chat and is consumed verbatim once available.",
+  "baselines": {
+    "complianceCore": {
+      "repository": "thefsts/FSTS-COMPLIANCE-CORE",
+      "ref": "main",
+      "sha": "4bf0c4b171864dc9d6d288ce18f6e0aa3463e797"
+    },
+    "apiHub": {
+      "repository": "thefsts/arma-api-hub",
+      "ref": "main",
+      "sha": "176c870660be72516f80691b4be72d5d5d271c41"
+    }
+  },
+  "requiredContracts": [
+    {
+      "id": "phase7.chat1.governed-request",
+      "producingChat": "Phase 7 Chat 1",
+      "description": "Governed request contract: contract ID, version, governed operation set, and required scopes.",
+      "status": "PENDING",
+      "expectedLocation": "FSTS-COMPLIANCE-CORE (owned by Core)",
+      "consumedAs": "verbatim"
+    },
+    {
+      "id": "phase7.chat1.governed-response",
+      "producingChat": "Phase 7 Chat 1",
+      "description": "Governed response contract and the bounded failure-code vocabulary for the governed boundary.",
+      "status": "PENDING",
+      "expectedLocation": "FSTS-COMPLIANCE-CORE (owned by Core)",
+      "consumedAs": "verbatim"
+    },
+    {
+      "id": "phase7.chat2.tenant-product-environment-authorization",
+      "producingChat": "Phase 7 Chat 2",
+      "description": "Tenant/product/environment authorization contract.",
+      "status": "PENDING",
+      "expectedLocation": "FSTS-COMPLIANCE-CORE (owned by Core)",
+      "consumedAs": "verbatim"
+    },
+    {
+      "id": "phase7.chat2.replay-idempotency-semantics",
+      "producingChat": "Phase 7 Chat 2",
+      "description": "Replay and idempotency semantics contract for the governed boundary.",
+      "status": "PENDING",
+      "expectedLocation": "FSTS-COMPLIANCE-CORE (owned by Core)",
+      "consumedAs": "verbatim"
+    },
+    {
+      "id": "phase7.chat3.legal-governance-handoff",
+      "producingChat": "Phase 7 Chat 3",
+      "description": "Legal-governance handoff contract (human review, canonical update, applicability, approval).",
+      "status": "PENDING",
+      "expectedLocation": "FSTS-COMPLIANCE-CORE (owned by Core)",
+      "consumedAs": "verbatim"
+    },
+    {
+      "id": "phase7.chat3.policy-release-adoption-drift-handoff",
+      "producingChat": "Phase 7 Chat 3",
+      "description": "Policy release / distribution / adoption / drift / rollback handoff contract.",
+      "status": "PENDING",
+      "expectedLocation": "FSTS-COMPLIANCE-CORE (owned by Core)",
+      "consumedAs": "verbatim"
+    },
+    {
+      "id": "phase7.chat4.audit-correlation",
+      "producingChat": "Phase 7 Chat 4",
+      "description": "Audit correlation contract binding transport audit to Core audit.",
+      "status": "PENDING",
+      "expectedLocation": "FSTS-COMPLIANCE-CORE (owned by Core)",
+      "consumedAs": "verbatim"
+    },
+    {
+      "id": "phase7.chat4.service-identity-credential-exchange",
+      "producingChat": "Phase 7 Chat 4",
+      "description": "Service-identity and credential exchange contract for the governed connection.",
+      "status": "PENDING",
+      "expectedLocation": "FSTS-COMPLIANCE-CORE (owned by Core)",
+      "consumedAs": "verbatim"
+    }
+  ],
+  "prohibitions": [
+    "Do not invent, restate, or approximate any Phase 7 Chat 1-4 contract content.",
+    "Do not define governed wire fields, versions, or operations locally.",
+    "Do not permit direct API Hub access to the Compliance Core Convex database.",
+    "Do not onboard any FSTS product other than the Compliance Core connection.",
+    "Do not weaken or bypass the fail-closed boundary to obtain a green result."
+  ],
+  "finalizationGate": {
+    "rule": "The integration may be finalized only when every requiredContracts entry is status AVAILABLE and reviewed by the PM.",
+    "currentResult": "BLOCKED",
+    "reason": "No Phase 7 Chat 1-4 artifacts are present in either repository."
+  }
+}

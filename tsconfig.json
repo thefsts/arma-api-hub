@@ -2,6 +2,7 @@
   "files": [],
   "references": [
     { "path": "packages/contracts" },
+    { "path": "packages/compliance-core-client" },
     { "path": "packages/config" },
     { "path": "packages/crypto" },
     { "path": "packages/events" },

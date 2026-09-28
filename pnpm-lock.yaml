@@ -102,6 +102,12 @@ importers:
         specifier: workspace:*
         version: link:../crypto
 
+  packages/compliance-core-client:
+    dependencies:
+      '@arma/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+
   packages/config:
     dependencies:
       zod:
