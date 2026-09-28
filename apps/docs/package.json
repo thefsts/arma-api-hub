@@ -1,0 +1,19 @@
+{
+  "name": "@arma/docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ARMA API Hub documentation site. Renders repository docs into a static site.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/build-docs.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}

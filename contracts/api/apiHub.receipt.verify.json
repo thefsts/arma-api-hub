@@ -1,0 +1,7 @@
+{
+  "receiptId": "rcpt-00000001",
+  "subjectId": "req-00000001",
+  "subjectType": "SERVICE_REQUEST",
+  "receiptHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "issuer": "arma-api-hub"
+}

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "1.0.0",
+  "receiptId": "rcpt-00000001",
+  "subjectId": "req-00000001",
+  "subjectType": "SERVICE_REQUEST",
+  "status": "ACCEPTED",
+  "accepted": true,
+  "receivedBodyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "receiptHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "acceptedAt": "1700000000000",
+  "issuer": "arma-api-hub",
+  "signature": {
+    "algorithm": "HMAC-SHA256",
+    "keyId": "local-dev-key-0001",
+    "value": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "correlation": {
+    "correlationId": "corr-00000001"
+  }
+}

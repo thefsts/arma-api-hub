@@ -1,0 +1,28 @@
+{
+  "name": "@arma/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ARMA API Hub service-facing API. Validates signed service requests; no production connectors in Phase 0.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@arma/config": "workspace:*",
+    "@arma/contracts": "workspace:*",
+    "@arma/crypto": "workspace:*",
+    "@arma/observability": "workspace:*",
+    "@arma/policy": "workspace:*",
+    "fastify": "5.12.5"
+  }
+}

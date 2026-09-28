@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "1.0.0",
+  "deliveryId": "del-00000001",
+  "eventId": "evt-00000001",
+  "eventType": "operon.posPanicTriggered",
+  "attempt": 1,
+  "maxAttempts": 5,
+  "destination": "arma-command-center",
+  "destinationRef": "dest-command-center",
+  "deliveredAt": "1700000000000",
+  "correlation": {
+    "correlationId": "corr-00000001"
+  },
+  "classification": "PROTECTED",
+  "bodyHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "signature": {
+    "algorithm": "HMAC-SHA256",
+    "keyId": "local-dev-key-0001",
+    "value": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  }
+}

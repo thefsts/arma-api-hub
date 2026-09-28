@@ -1,0 +1,9 @@
+{
+  "deliveryId": "del-00000001",
+  "eventId": "evt-00000001",
+  "destination": "arma-command-center",
+  "destinationRef": "dest-command-center",
+  "attempt": 1,
+  "maxAttempts": 5,
+  "bodyHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+}

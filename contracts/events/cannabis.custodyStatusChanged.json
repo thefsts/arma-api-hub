@@ -1,0 +1,7 @@
+{
+  "custodyId": "custody-00000001",
+  "previousStatus": "IN_TRANSIT",
+  "newStatus": "IN_CUSTODY",
+  "changedAt": "1700000000000",
+  "actorRef": "actor-0001"
+}

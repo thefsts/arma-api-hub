@@ -1,0 +1,7 @@
+{
+  "eventType": "operon.posPanicTriggered",
+  "stream": "tenant:acme:pos",
+  "sequence": 1,
+  "payloadHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "classification": "PROTECTED"
+}

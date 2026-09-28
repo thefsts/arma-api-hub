@@ -1,0 +1,6 @@
+{
+  "panicId": "panic-00000001",
+  "terminalRef": "terminal-0001",
+  "triggeredAt": "1700000000000",
+  "requiresHumanDispatch": true
+}

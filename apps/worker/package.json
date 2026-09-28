@@ -1,0 +1,27 @@
+{
+  "name": "@arma/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ARMA API Hub durable worker runtime: queue consumption, retries, dead-letter handling, and webhook delivery.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@arma/config": "workspace:*",
+    "@arma/contracts": "workspace:*",
+    "@arma/events": "workspace:*",
+    "@arma/observability": "workspace:*",
+    "@arma/policy": "workspace:*"
+  }
+}

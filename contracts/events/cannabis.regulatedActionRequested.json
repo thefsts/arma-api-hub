@@ -1,0 +1,7 @@
+{
+  "requestId": "req-00000001",
+  "actionType": "TRANSPORT",
+  "jurisdictionRef": "jurisdiction-0001",
+  "requestedAt": "1700000000000",
+  "requiresHumanApproval": true
+}
