@@ -1,0 +1,33 @@
+{
+  "serviceId": "svc-lawshield-compliance-assurance",
+  "displayName": "Law Shield Compliance Assurance",
+  "productId": "arma-law-shield",
+  "environment": "PRODUCTION",
+  "owner": {
+    "ownerId": "owner-lawshield-assurance",
+    "displayName": "Law Shield Assurance Owner",
+    "contactRef": "assurance-owner@lawshield.invalid",
+    "function": "legal-assurance"
+  },
+  "classification": "CONFIDENTIAL",
+  "capabilities": [
+    {
+      "capability": "evidence.metadata.write",
+      "direction": "OUTBOUND",
+      "maxClassification": "CONFIDENTIAL",
+      "requiresApproval": true
+    },
+    {
+      "capability": "compliance.read",
+      "direction": "INBOUND",
+      "maxClassification": "INTERNAL",
+      "requiresApproval": false
+    },
+    {
+      "capability": "telemetry.write",
+      "direction": "OUTBOUND",
+      "maxClassification": "INTERNAL",
+      "requiresApproval": false
+    }
+  ]
+}
