@@ -8,6 +8,9 @@ export default defineConfig({
     // Resolve workspace packages to source so tests run without a prior build.
     alias: {
       '@arma/contracts': resolveFromRoot('./packages/contracts/src/index.ts'),
+      '@arma/compliance-core-client': resolveFromRoot(
+        './packages/compliance-core-client/src/index.ts',
+      ),
       '@arma/crypto': resolveFromRoot('./packages/crypto/src/index.ts'),
       '@arma/config': resolveFromRoot('./packages/config/src/index.ts'),
       '@arma/events': resolveFromRoot('./packages/events/src/index.ts'),

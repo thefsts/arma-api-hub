@@ -1,0 +1,247 @@
+{
+  "manifestId": "FSTS-PHASE7-CORE-CONVERGENCE-HANDOFF",
+  "manifestVersion": "1.0.0",
+  "referenceDate": "2026-09-16",
+  "description": "Canonical Phase 7 integration handoff manifest for the converged Phase 7 Core tree. Inventories the REAL contracts produced by Chats 1-4 (onboarding/identity, live compliance service, policy delivery/adoption/drift, legal/regulatory production). This is a reconciliation of ACTUAL artifacts, NOT a re-derivation from any prior eight-contract assumption. No contract is invented here: every entry names an existing source file and its declared version.",
+  "baseline": {
+    "phase6ProtectedSha": "4bf0c4b171864dc9d6d288ce18f6e0aa3463e797",
+    "convergenceBranch": "phase7/core-convergence"
+  },
+  "sourcePrs": {
+    "chat1": { "pr": 26, "branch": "phase7/production-identity-onboarding", "head": "2911268ecd3d1314e8bf47fcb6fbd65e4e18d977" },
+    "chat2": { "pr": 28, "branch": "phase7/live-compliance-service", "head": "0c53693277a87bc90c9364cf814c83bf32ada02c" },
+    "chat3": { "pr": 29, "branch": "phase7/policy-production-integration", "head": "37cb6c269dd5a935db4dc7ba5a60203e36931449" },
+    "chat4": { "pr": 27, "branch": "phase7/legal-production-integration", "head": "ae85b5bd158806ae314b9b2fc3c8dc16f40f51e4" }
+  },
+  "singleBoundary": {
+    "pipeline": "runGovernedPipeline",
+    "source": "convex/lib/apiPipeline.ts",
+    "portsBuilder": "buildGovernedPorts",
+    "portsSource": "convex/apiService.ts",
+    "note": "Every Phase 7 lane funnels through this one authoritative governed boundary. No second auth/authz pipeline exists; no client-authoritative tenant/product; no direct product->Convex; no API Hub->Core Convex; no policy/legal bypass."
+  },
+  "contracts": [
+    {
+      "id": "onboarding-identity",
+      "lane": "chat1",
+      "title": "Production identity / tenant / product onboarding contract",
+      "version": "1.0.0",
+      "authority": "COMPLIANCE_CORE",
+      "sources": [
+        "convex/lib/onboardingState.ts",
+        "convex/lib/onboardingRegistry.ts",
+        "convex/lib/apiOnboarding.ts",
+        "convex/lib/onboardingAudit.ts",
+        "docs/PHASE7-ONBOARDING-CONTRACT.md"
+      ],
+      "runtimeTables": [
+        "onboardingRequests",
+        "onboardingTransitions",
+        "serviceIdentityRegistry",
+        "productRegistrations",
+        "tenantBindings",
+        "credentialReferences"
+      ],
+      "closedStates": ["PROPOSED", "REVIEWED", "APPROVED", "PROVISIONED", "VERIFIED", "ACTIVE", "SUSPENDED", "REVOKED", "REJECTED"],
+      "invariants": ["APPROVED != ACTIVE", "PROVISIONED != VERIFIED", "VERIFIED != CERTIFIED"]
+    },
+    {
+      "id": "governed-service-request-response",
+      "lane": "chat2",
+      "title": "LIVE COMPLIANCE SERVICE governed request/response contract",
+      "version": "1.0.0",
+      "engine": "fsts-compliance-core-service",
+      "authority": "COMPLIANCE_CORE",
+      "sources": [
+        "convex/lib/serviceContract.ts",
+        "convex/lib/serviceDispatch.ts",
+        "convex/service.ts",
+        "registry/service/contract.json"
+      ],
+      "entrypoints": {
+        "invoke": "service.invokeComplianceService",
+        "describe": "service.describeComplianceService",
+        "contract": "service.getComplianceServiceContract",
+        "health": "service.complianceServiceHealth",
+        "readiness": "service.complianceServiceReadiness",
+        "registerContracts": "service.registerComplianceServiceContracts"
+      },
+      "idempotencyScope": "compliance-service",
+      "auditSource": "convex/service.invokeComplianceService",
+      "supportedApiVersions": ["v1"]
+    },
+    {
+      "id": "operation-registry",
+      "lane": "chat2",
+      "title": "Closed governed operation registry (projection of the runtime catalog)",
+      "version": "1.0.0",
+      "authority": "COMPLIANCE_CORE",
+      "sources": [
+        "convex/lib/apiContract.ts",
+        "convex/lib/serviceContract.ts",
+        "registry/service/operation-registry.json"
+      ],
+      "counts": { "apiOperations": 26, "serviceOperations": 26, "governedActions": 11 },
+      "note": "Adding an operation to the authoritative catalog is the ONLY way to expose it. The service registry is a pure projection; no business logic duplicated."
+    },
+    {
+      "id": "scope-registry",
+      "lane": "chat1+chat2+chat3",
+      "title": "Core authorization scope registry",
+      "version": "1.0.0",
+      "authority": "COMPLIANCE_CORE",
+      "sources": [
+        "convex/lib/apiAuthorization.ts",
+        "registry/service/scope-registry.json"
+      ],
+      "counts": { "serviceScopes": 22 },
+      "note": "The Hub transports its least-privilege scope vocabulary; the Core authorizes against its OWN scopes. A Hub scope maps to one or more Core scopes."
+    },
+    {
+      "id": "failure-taxonomy",
+      "lane": "chat1+chat2+chat4",
+      "title": "Bounded failure taxonomy",
+      "version": "1.0.0",
+      "authority": "COMPLIANCE_CORE",
+      "sources": [
+        "convex/lib/apiErrors.ts",
+        "registry/service/failure-taxonomy.json"
+      ],
+      "counts": { "boundedCodes": 34, "serviceMandated": 17, "serviceTotal": 18 },
+      "note": "Every non-OK response carries exactly one code from a closed set. Unknown codes fail closed to INTERNAL_FAILURE. Raw internal error text is never echoed."
+    },
+    {
+      "id": "version-negotiation",
+      "lane": "chat1+chat2",
+      "title": "Governed API version negotiation",
+      "version": "1.0.0",
+      "authority": "COMPLIANCE_CORE",
+      "sources": [
+        "convex/lib/apiVersion.ts",
+        "registry/service/version-negotiation.json"
+      ],
+      "currentApiVersion": "v1",
+      "supportedApiVersions": ["v1"],
+      "note": "Unsupported version fails closed with UNSUPPORTED_VERSION / UNKNOWN_API_VERSION. No silent downgrade or implicit upgrade."
+    },
+    {
+      "id": "replay-idempotency",
+      "lane": "chat1+chat2",
+      "title": "Replay + idempotency semantics",
+      "version": "1.0.0",
+      "authority": "COMPLIANCE_CORE",
+      "sources": [
+        "convex/lib/idempotency.ts",
+        "convex/lib/apiRequest.ts",
+        "registry/service/idempotency-semantics.json"
+      ],
+      "idempotencyScope": "compliance-service",
+      "note": "Rides the SAME authoritative idempotency foundation (idempotencyRecords). Same key + same request replays; same key + different request conflicts. Nonce/requestId/correlationId are excluded from the hash so a legitimate retry uses the same key with a fresh nonce."
+    },
+    {
+      "id": "policy-delivery-adoption-drift",
+      "lane": "chat3",
+      "title": "Policy delivery / adoption / drift production contract",
+      "version": "1.0.0",
+      "authority": "COMPLIANCE_CORE",
+      "sources": [
+        "convex/lib/deliveryConstants.ts",
+        "convex/lib/delivery.ts",
+        "convex/policyDeliveryApi.ts",
+        "packages/policy-lifecycle/src/lifecycle-engine.mjs",
+        "registry/policy-lifecycle/handoffs.json"
+      ],
+      "runtimeTables": [
+        "policyPackRuntime",
+        "policyApprovals",
+        "signedReleases",
+        "releaseDistributions",
+        "adoptionReceipts",
+        "rollbackRecords",
+        "driftRecords",
+        "qualivantaHandoffs",
+        "retentionHolds"
+      ],
+      "deliveryStates": ["APPROVED", "RELEASED", "DISTRIBUTED", "RECEIVED", "APPLIED", "VERIFIED", "DRIFTED", "ROLLED_BACK"],
+      "hubContractVersion": "1.0.0",
+      "complianceClaim": "NONE",
+      "note": "API Hub delivery success must NOT manufacture authoritative Core states. The Hub is transport-only."
+    },
+    {
+      "id": "legal-regulatory-change-transport",
+      "lane": "chat4",
+      "title": "Legal / regulatory change transport + governed legal API",
+      "version": "1.0.0",
+      "authority": "COMPLIANCE_CORE",
+      "sources": [
+        "convex/lib/legalApi.ts",
+        "convex/lib/legalApiGateway.ts",
+        "convex/lib/legalChangePipeline.ts",
+        "convex/lib/legalConflict.ts",
+        "convex/legalApi.ts",
+        "packages/api-hub-contract/src/legal-change-transport.mjs"
+      ],
+      "legalApiOperations": 68,
+      "pipelineStages": ["DETECTED", "REVIEW_REQUIRED", "HUMAN_LEGAL_REVIEW", "APPROVED_CANONICAL_UPDATE", "APPLICABILITY_REVIEW", "CONTROL_POLICY_IMPACT_REVIEW"],
+      "forbiddenTargets": ["PRODUCT_CHANGE", "PRODUCT_BEHAVIOR_CHANGE", "ENFORCEMENT_CHANGE", "CONTROL_ACTIVATION", "CANONICAL_REWRITE", "AUTO_APPLY"],
+      "note": "Transport carries notifications only, never compliance authority (carriesComplianceAuthority=false). No automatic legal enforcement; no AI-authored canonical law; no unresolved-conflict auto-resolution."
+    },
+    {
+      "id": "audit-correlation",
+      "lane": "chat1+chat2+chat3+chat4",
+      "title": "Audit + correlation linkage",
+      "version": "1.0.0",
+      "authority": "COMPLIANCE_CORE",
+      "sources": [
+        "convex/lib/audit.ts",
+        "convex/lib/apiCorrelation.ts",
+        "convex/lib/onboardingAudit.ts"
+      ],
+      "note": "Every governed outcome is linked to an audit event; correlationId threads the request through the boundary."
+    },
+    {
+      "id": "credential-reference",
+      "lane": "chat1",
+      "title": "Credential-reference contract (no raw secrets)",
+      "version": "1.0.0",
+      "authority": "COMPLIANCE_CORE",
+      "sources": [
+        "convex/lib/onboardingRegistry.ts",
+        "convex/lib/apiService.ts"
+      ],
+      "runtimeTable": "credentialReferences",
+      "note": "Only credential REFERENCES are stored; the boundary resolves the secret out-of-band (env). Expired/revoked references fail closed (CREDENTIAL_EXPIRED / CREDENTIAL_REVOKED)."
+    },
+    {
+      "id": "health-readiness",
+      "lane": "chat2",
+      "title": "Health / readiness contract",
+      "version": "1.0.0",
+      "authority": "COMPLIANCE_CORE",
+      "sources": [
+        "convex/lib/apiHealth.ts",
+        "convex/service.ts",
+        "registry/service/health-readiness-contract.json"
+      ],
+      "queries": {
+        "health": "service.complianceServiceHealth",
+        "readiness": "service.complianceServiceReadiness"
+      },
+      "complianceClaim": "NONE",
+      "certificationClaim": "NONE",
+      "note": "HEALTHY != COMPLIANT and READY != CERTIFIED. Operational signals only; never a compliance or certification verdict."
+    }
+  ],
+  "honestyInvariants": [
+    "PASS != COMPLIANT",
+    "IMPLEMENTED != CERTIFIED",
+    "READY != CERTIFIED",
+    "APPROVED != RELEASED",
+    "RELEASED != ADOPTED",
+    "RECEIVED != APPLIED",
+    "APPROVED != ACTIVE",
+    "PROVISIONED != VERIFIED",
+    "VERIFIED != CERTIFIED"
+  ],
+  "recordStatus": "CANONICAL"
+}

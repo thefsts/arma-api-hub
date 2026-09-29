@@ -1,0 +1,22 @@
+{
+  "name": "@arma/compliance-core-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Transport-only client boundary for the ARMA API Hub -> FSTS Compliance Core governed connection (Phase 7 Chat 5). Prepared, not finalized: the governed wire contract is owned by Compliance Core and consumed verbatim.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@arma/contracts": "workspace:*"
+  }
+}

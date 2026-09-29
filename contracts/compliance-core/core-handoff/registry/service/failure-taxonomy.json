@@ -1,0 +1,173 @@
+{
+ "description": "Bounded LIVE SERVICE failure taxonomy. Every non-OK response carries exactly one code from this closed set. Unknown codes fail closed to INTERNAL_FAILURE. Messages are a fixed function of the bounded code — the boundary NEVER echoes raw internal error text or sensitive data.",
+ "referenceDate": "2026-09-16",
+ "counts": {
+  "codes": 18,
+  "mandated": 17
+ },
+ "mandatedFailureCodes": [
+  "AUTHENTICATION_FAILED",
+  "AUTHORIZATION_DENIED",
+  "TENANT_DENIED",
+  "PRODUCT_DENIED",
+  "ENVIRONMENT_DENIED",
+  "SCOPE_DENIED",
+  "INTEGRATION_INACTIVE",
+  "REPLAY_DENIED",
+  "STALE_REQUEST",
+  "INTEGRITY_FAILED",
+  "IDEMPOTENCY_CONFLICT",
+  "RATE_LIMITED",
+  "UNSUPPORTED_VERSION",
+  "UNKNOWN_OPERATION",
+  "VALIDATION_FAILED",
+  "DEPENDENCY_UNAVAILABLE",
+  "INTERNAL_FAILURE"
+ ],
+ "codes": [
+  {
+   "code": "AUTHENTICATION_FAILED",
+   "failureClass": "AUTH",
+   "retryable": false,
+   "httpStatus": 401,
+   "message": "service authentication failed",
+   "mandated": true
+  },
+  {
+   "code": "AUTHORIZATION_DENIED",
+   "failureClass": "AUTHORIZATION",
+   "retryable": false,
+   "httpStatus": 403,
+   "message": "authorization denied",
+   "mandated": true
+  },
+  {
+   "code": "TENANT_DENIED",
+   "failureClass": "AUTHORIZATION",
+   "retryable": false,
+   "httpStatus": 403,
+   "message": "tenant access denied",
+   "mandated": true
+  },
+  {
+   "code": "PRODUCT_DENIED",
+   "failureClass": "AUTHORIZATION",
+   "retryable": false,
+   "httpStatus": 403,
+   "message": "product access denied",
+   "mandated": true
+  },
+  {
+   "code": "ENVIRONMENT_DENIED",
+   "failureClass": "AUTHORIZATION",
+   "retryable": false,
+   "httpStatus": 403,
+   "message": "environment access denied",
+   "mandated": true
+  },
+  {
+   "code": "SCOPE_DENIED",
+   "failureClass": "AUTHORIZATION",
+   "retryable": false,
+   "httpStatus": 403,
+   "message": "required scope not held",
+   "mandated": true
+  },
+  {
+   "code": "INTEGRATION_INACTIVE",
+   "failureClass": "INTEGRATION",
+   "retryable": false,
+   "httpStatus": 403,
+   "message": "integration is not active",
+   "mandated": true
+  },
+  {
+   "code": "REPLAY_DENIED",
+   "failureClass": "REPLAY",
+   "retryable": false,
+   "httpStatus": 409,
+   "message": "request replay denied",
+   "mandated": true
+  },
+  {
+   "code": "STALE_REQUEST",
+   "failureClass": "REPLAY",
+   "retryable": false,
+   "httpStatus": 401,
+   "message": "request is outside the freshness window",
+   "mandated": true
+  },
+  {
+   "code": "INTEGRITY_FAILED",
+   "failureClass": "INTEGRITY",
+   "retryable": false,
+   "httpStatus": 401,
+   "message": "request integrity verification failed",
+   "mandated": true
+  },
+  {
+   "code": "IDEMPOTENCY_CONFLICT",
+   "failureClass": "IDEMPOTENCY",
+   "retryable": false,
+   "httpStatus": 409,
+   "message": "idempotency key reused with a different request",
+   "mandated": true
+  },
+  {
+   "code": "RATE_LIMITED",
+   "failureClass": "RATE_LIMIT",
+   "retryable": true,
+   "httpStatus": 429,
+   "message": "rate limit exceeded",
+   "mandated": true
+  },
+  {
+   "code": "UNSUPPORTED_VERSION",
+   "failureClass": "VERSION",
+   "retryable": false,
+   "httpStatus": 400,
+   "message": "unsupported api version",
+   "mandated": true
+  },
+  {
+   "code": "UNKNOWN_OPERATION",
+   "failureClass": "VALIDATION",
+   "retryable": false,
+   "httpStatus": 404,
+   "message": "unknown operation",
+   "mandated": true
+  },
+  {
+   "code": "VALIDATION_FAILED",
+   "failureClass": "VALIDATION",
+   "retryable": false,
+   "httpStatus": 400,
+   "message": "request validation failed",
+   "mandated": true
+  },
+  {
+   "code": "DEPENDENCY_UNAVAILABLE",
+   "failureClass": "DEPENDENCY",
+   "retryable": true,
+   "httpStatus": 503,
+   "message": "a required dependency is unavailable",
+   "mandated": true
+  },
+  {
+   "code": "INTERNAL_FAILURE",
+   "failureClass": "INTERNAL",
+   "retryable": true,
+   "httpStatus": 500,
+   "message": "internal service failure",
+   "mandated": true
+  },
+  {
+   "code": "NOT_FOUND",
+   "failureClass": "NOT_FOUND",
+   "retryable": false,
+   "httpStatus": 404,
+   "message": "record not found",
+   "mandated": false
+  }
+ ]
+}

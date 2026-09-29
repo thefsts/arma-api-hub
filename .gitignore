@@ -34,3 +34,6 @@ Thumbs.db
 # Test artifacts
 playwright-report/
 test-results/
+
+# Generated SBOM (gate artifact, not tracked)
+sbom.cdx.json

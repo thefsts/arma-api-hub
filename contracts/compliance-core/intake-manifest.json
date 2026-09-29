@@ -1,0 +1,286 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "manifestId": "compliance-core-integration-intake",
+  "phase": "Phase 7",
+  "chat": "Chat 5",
+  "status": "AVAILABLE",
+  "description": "Authoritative Phase 7 convergence handoff the ARMA API Hub consumes to finalize the governed Compliance Core connection. This manifest reconciles the REAL converged Core contracts (Chats 1-4) via registry/phase7/handoff-manifest.json. It does NOT restate or invent any contract content, field, version, scope, failure code, or operation: every entry names the existing Core source artifact and is consumed verbatim from the vendored Core registry tree.",
+  "baselines": {
+    "complianceCore": {
+      "repository": "thefsts/FSTS-COMPLIANCE-CORE",
+      "ref": "main",
+      "sha": "c7ac04b2d40624bef1742f819a9f7eee43e3d12c",
+      "convergencePr": 30,
+      "convergenceBranch": "phase7/core-convergence"
+    },
+    "apiHub": {
+      "repository": "thefsts/arma-api-hub",
+      "ref": "main",
+      "sha": "176c870660be72516f80691b4be72d5d5d271c41",
+      "integrationPr": 2,
+      "integrationBranch": "phase7/compliance-core-integration"
+    }
+  },
+  "coreHandoff": {
+    "manifestId": "FSTS-PHASE7-CORE-CONVERGENCE-HANDOFF",
+    "manifestVersion": "1.0.0",
+    "singleBoundary": {
+      "pipeline": "runGovernedPipeline",
+      "source": "convex/lib/apiPipeline.ts",
+      "portsBuilder": "buildGovernedPorts",
+      "portsSource": "convex/apiService.ts"
+    },
+    "vendoredAt": "contracts/compliance-core/core-handoff",
+    "conformanceFixture": "tests/fixtures/core-handoff",
+    "pinnedSha": "c7ac04b2d40624bef1742f819a9f7eee43e3d12c"
+  },
+  "sourcePrs": {
+    "chat1": {
+      "pr": 26,
+      "branch": "phase7/production-identity-onboarding",
+      "head": "2911268ecd3d1314e8bf47fcb6fbd65e4e18d977"
+    },
+    "chat2": {
+      "pr": 28,
+      "branch": "phase7/live-compliance-service",
+      "head": "0c53693277a87bc90c9364cf814c83bf32ada02c"
+    },
+    "chat3": {
+      "pr": 29,
+      "branch": "phase7/policy-production-integration",
+      "head": "37cb6c269dd5a935db4dc7ba5a60203e36931449"
+    },
+    "chat4": {
+      "pr": 27,
+      "branch": "phase7/legal-production-integration",
+      "head": "ae85b5bd158806ae314b9b2fc3c8dc16f40f51e4"
+    }
+  },
+  "requiredContracts": [
+    {
+      "id": "onboarding-identity",
+      "lane": "chat1",
+      "producingChat": "Phase 7 Chat 1",
+      "version": "1.0.0",
+      "status": "AVAILABLE",
+      "authority": "COMPLIANCE_CORE",
+      "sources": [
+        "convex/lib/onboardingState.ts",
+        "convex/lib/onboardingRegistry.ts",
+        "convex/lib/apiOnboarding.ts",
+        "convex/lib/onboardingAudit.ts",
+        "docs/PHASE7-ONBOARDING-CONTRACT.md"
+      ],
+      "invariants": ["APPROVED != ACTIVE", "PROVISIONED != VERIFIED", "VERIFIED != CERTIFIED"],
+      "consumedAs": "verbatim"
+    },
+    {
+      "id": "governed-service-request-response",
+      "lane": "chat2",
+      "producingChat": "Phase 7 Chat 2",
+      "version": "1.0.0",
+      "status": "AVAILABLE",
+      "authority": "COMPLIANCE_CORE",
+      "sources": [
+        "convex/lib/serviceContract.ts",
+        "convex/lib/serviceDispatch.ts",
+        "convex/service.ts",
+        "registry/service/contract.json"
+      ],
+      "handoffId": "FSTS-COMPLIANCE-CORE-LIVE-SERVICE",
+      "contractVersion": "1.0.0",
+      "supportedApiVersions": ["v1"],
+      "consumedAs": "verbatim"
+    },
+    {
+      "id": "operation-registry",
+      "lane": "chat2",
+      "producingChat": "Phase 7 Chat 2",
+      "version": "1.0.0",
+      "status": "AVAILABLE",
+      "authority": "COMPLIANCE_CORE",
+      "sources": [
+        "convex/lib/apiContract.ts",
+        "convex/lib/serviceContract.ts",
+        "registry/service/operation-registry.json"
+      ],
+      "counts": { "apiOperations": 26, "serviceOperations": 26, "governedActions": 11 },
+      "consumedAs": "verbatim"
+    },
+    {
+      "id": "scope-registry",
+      "lane": "chat1+chat2+chat3",
+      "producingChat": "Phase 7 Chats 1-3",
+      "version": "1.0.0",
+      "status": "AVAILABLE",
+      "authority": "COMPLIANCE_CORE",
+      "sources": ["convex/lib/apiAuthorization.ts", "registry/service/scope-registry.json"],
+      "counts": { "coreScopes": 22, "hubScopes": 8 },
+      "consumedAs": "verbatim"
+    },
+    {
+      "id": "failure-taxonomy",
+      "lane": "chat1+chat2+chat4",
+      "producingChat": "Phase 7 Chats 1, 2, 4",
+      "version": "1.0.0",
+      "status": "AVAILABLE",
+      "authority": "COMPLIANCE_CORE",
+      "sources": ["convex/lib/apiErrors.ts", "registry/service/failure-taxonomy.json"],
+      "counts": { "boundedCodes": 34, "serviceMandated": 17, "serviceTotal": 18 },
+      "consumedAs": "verbatim"
+    },
+    {
+      "id": "version-negotiation",
+      "lane": "chat1+chat2",
+      "producingChat": "Phase 7 Chats 1-2",
+      "version": "1.0.0",
+      "status": "AVAILABLE",
+      "authority": "COMPLIANCE_CORE",
+      "sources": ["convex/lib/apiVersion.ts", "registry/service/version-negotiation.json"],
+      "currentApiVersion": "v1",
+      "supportedApiVersions": ["v1"],
+      "consumedAs": "verbatim"
+    },
+    {
+      "id": "replay-idempotency",
+      "lane": "chat1+chat2",
+      "producingChat": "Phase 7 Chats 1-2",
+      "version": "1.0.0",
+      "status": "AVAILABLE",
+      "authority": "COMPLIANCE_CORE",
+      "sources": [
+        "convex/lib/idempotency.ts",
+        "convex/lib/apiRequest.ts",
+        "registry/service/idempotency-semantics.json"
+      ],
+      "idempotencyScope": "compliance-service",
+      "freshnessWindowMs": 300000,
+      "futureSkewMs": 30000,
+      "consumedAs": "verbatim"
+    },
+    {
+      "id": "policy-delivery-adoption-drift",
+      "lane": "chat3",
+      "producingChat": "Phase 7 Chat 3",
+      "version": "1.0.0",
+      "status": "AVAILABLE",
+      "authority": "COMPLIANCE_CORE",
+      "sources": [
+        "convex/lib/deliveryConstants.ts",
+        "convex/lib/delivery.ts",
+        "convex/policyDeliveryApi.ts",
+        "packages/policy-lifecycle/src/lifecycle-engine.mjs",
+        "registry/policy-lifecycle/handoffs.json"
+      ],
+      "deliveryStates": [
+        "APPROVED",
+        "RELEASED",
+        "DISTRIBUTED",
+        "RECEIVED",
+        "APPLIED",
+        "VERIFIED",
+        "DRIFTED",
+        "ROLLED_BACK"
+      ],
+      "complianceClaim": "NONE",
+      "consumedAs": "verbatim"
+    },
+    {
+      "id": "legal-regulatory-change-transport",
+      "lane": "chat4",
+      "producingChat": "Phase 7 Chat 4",
+      "version": "1.0.0",
+      "status": "AVAILABLE",
+      "authority": "COMPLIANCE_CORE",
+      "sources": [
+        "convex/lib/legalApi.ts",
+        "convex/lib/legalApiGateway.ts",
+        "convex/lib/legalChangePipeline.ts",
+        "convex/lib/legalConflict.ts",
+        "convex/legalApi.ts",
+        "packages/api-hub-contract/src/legal-change-transport.mjs"
+      ],
+      "transportContractId": "FSTS-COMPLIANCE-CORE-API-HUB::LEGAL-CHANGE-TRANSPORT",
+      "transportContractVersion": "1.0.0",
+      "transportOnly": true,
+      "carriesComplianceAuthority": false,
+      "pipelineStages": [
+        "DETECTED",
+        "REVIEW_REQUIRED",
+        "HUMAN_LEGAL_REVIEW",
+        "APPROVED_CANONICAL_UPDATE",
+        "APPLICABILITY_REVIEW",
+        "CONTROL_POLICY_IMPACT_REVIEW"
+      ],
+      "consumedAs": "verbatim"
+    },
+    {
+      "id": "audit-correlation",
+      "lane": "chat1+chat2+chat3+chat4",
+      "producingChat": "Phase 7 Chats 1-4",
+      "version": "1.0.0",
+      "status": "AVAILABLE",
+      "authority": "COMPLIANCE_CORE",
+      "sources": [
+        "convex/lib/audit.ts",
+        "convex/lib/apiCorrelation.ts",
+        "convex/lib/onboardingAudit.ts"
+      ],
+      "consumedAs": "verbatim"
+    },
+    {
+      "id": "credential-reference",
+      "lane": "chat1",
+      "producingChat": "Phase 7 Chat 1",
+      "version": "1.0.0",
+      "status": "AVAILABLE",
+      "authority": "COMPLIANCE_CORE",
+      "sources": ["convex/lib/onboardingRegistry.ts", "convex/lib/apiService.ts"],
+      "runtimeTable": "credentialReferences",
+      "note": "Only credential REFERENCES are stored; the boundary resolves the secret out-of-band (env). Credential material stays outside Git.",
+      "consumedAs": "verbatim"
+    },
+    {
+      "id": "health-readiness",
+      "lane": "chat2",
+      "producingChat": "Phase 7 Chat 2",
+      "version": "1.0.0",
+      "status": "AVAILABLE",
+      "authority": "COMPLIANCE_CORE",
+      "sources": [
+        "convex/lib/apiHealth.ts",
+        "convex/service.ts",
+        "registry/service/health-readiness-contract.json"
+      ],
+      "complianceClaim": "NONE",
+      "certificationClaim": "NONE",
+      "consumedAs": "verbatim"
+    }
+  ],
+  "honestyInvariants": [
+    "PASS != COMPLIANT",
+    "IMPLEMENTED != CERTIFIED",
+    "READY != CERTIFIED",
+    "APPROVED != RELEASED",
+    "RELEASED != ADOPTED",
+    "RECEIVED != APPLIED",
+    "APPROVED != ACTIVE",
+    "PROVISIONED != VERIFIED",
+    "VERIFIED != CERTIFIED"
+  ],
+  "prohibitions": [
+    "Do not invent, restate, or approximate any Phase 7 Chat 1-4 contract content.",
+    "Do not define governed wire fields, versions, scopes, or operations locally.",
+    "Do not permit direct API Hub access to the Compliance Core Convex database.",
+    "Do not install a second Core auth/authz decision engine inside the API Hub.",
+    "Do not onboard any FSTS product other than the Compliance Core connection.",
+    "Do not treat a transport outcome as a compliance or certification verdict.",
+    "Do not weaken or bypass the fail-closed boundary to obtain a green result."
+  ],
+  "finalizationGate": {
+    "rule": "The integration is finalized only when every requiredContracts entry is status AVAILABLE and reviewed by the PM.",
+    "currentResult": "READY_FOR_PM_REVIEW",
+    "reason": "All 12 converged Phase 7 contracts are AVAILABLE in Core main @ c7ac04b and consumed verbatim. The integration is finalized; PM merge authorization is pending."
+  },
+  "recordStatus": "CANONICAL"
+}

@@ -1,0 +1,104 @@
+{
+ "description": "EXAMPLE QUALIVANTA bridge handoffs — provider-neutral, complianceClaim pinned NONE, evidence PROPOSED.",
+ "referenceDate": "2026-09-15",
+ "counts": {
+  "handoffs": 2
+ },
+ "handoffs": [
+  {
+   "handoffId": "BRIDGE-OPS-EXAMPLE-0001",
+   "handoffState": "ACKNOWLEDGED",
+   "releaseId": "REL-EXAMPLE-0001",
+   "packId": "PACK-EXAMPLE-0004",
+   "packVersion": "1.0.0",
+   "controlIds": [
+    "FSTS-LOG-001",
+    "FSTS-IR-001"
+   ],
+   "verificationRefs": [
+    {
+     "verificationRef": "VER-EXAMPLE-0001",
+     "verificationKind": "AUTOMATED_TEST",
+     "result": "PASS",
+     "verifiedAt": "2026-08-01T00:00:00Z",
+     "targetRef": "SYNTH-TARGET-0001",
+     "errorTaxonomy": null
+    }
+   ],
+   "evidenceRefs": [
+    {
+     "evidenceId": "EVID-EXAMPLE-0001",
+     "evidenceCandidateState": "PROPOSED",
+     "artifactDigest": null
+    }
+   ],
+   "assuranceResultRefs": [],
+   "targetRef": "SYNTH-TARGET-0001",
+   "targetType": "SYNTHETIC_TARGET",
+   "correlationId": "corr-bridge-0001",
+   "preparedAt": "2026-08-01T00:00:00Z",
+   "sentAt": "2026-08-01T00:10:00Z",
+   "acknowledgedAt": "2026-08-01T00:20:00Z",
+   "complianceClaim": "NONE",
+   "evidenceHandoffState": "PROPOSED",
+   "integrityHash": "0000000000000000000000000000000000000000000000000000000000000000",
+   "integrityAlgorithm": "SHA-256",
+   "recordStatus": "EXAMPLE",
+   "provenance": {
+    "sourceType": "PROGRAM_OWNER",
+    "textStatus": "FSTS_INTERPRETATION",
+    "sourceUrl": null,
+    "verifiedDate": "2026-09-15",
+    "reviewer": "thefsts",
+    "interpretation": "Handoff acknowledged by QUALIVANTA; PASS is a verification result, never COMPLIANT."
+   }
+  },
+  {
+   "handoffId": "BRIDGE-OPS-EXAMPLE-0002",
+   "handoffState": "ACCEPTED_FOR_REVIEW",
+   "releaseId": "REL-EXAMPLE-0002",
+   "packId": "PACK-EXAMPLE-0005",
+   "packVersion": "1.1.0",
+   "controlIds": [
+    "FSTS-LOG-001"
+   ],
+   "verificationRefs": [
+    {
+     "verificationRef": "VER-EXAMPLE-0002",
+     "verificationKind": "SCANNER",
+     "result": "FAIL",
+     "verifiedAt": "2026-08-03T00:00:00Z",
+     "targetRef": "SYNTH-TARGET-0003",
+     "errorTaxonomy": null
+    }
+   ],
+   "evidenceRefs": [
+    {
+     "evidenceId": "EVID-EXAMPLE-0002",
+     "evidenceCandidateState": "PROPOSED",
+     "artifactDigest": null
+    }
+   ],
+   "assuranceResultRefs": [],
+   "targetRef": "SYNTH-TARGET-0003",
+   "targetType": "SYNTHETIC_TARGET",
+   "correlationId": "corr-bridge-0002",
+   "preparedAt": "2026-08-03T00:00:00Z",
+   "sentAt": "2026-08-03T00:10:00Z",
+   "acknowledgedAt": "2026-08-03T00:20:00Z",
+   "complianceClaim": "NONE",
+   "evidenceHandoffState": "PROPOSED",
+   "integrityHash": "0000000000000000000000000000000000000000000000000000000000000000",
+   "integrityAlgorithm": "SHA-256",
+   "recordStatus": "EXAMPLE",
+   "provenance": {
+    "sourceType": "PROGRAM_OWNER",
+    "textStatus": "FSTS_INTERPRETATION",
+    "sourceUrl": null,
+    "verifiedDate": "2026-09-15",
+    "reviewer": "thefsts",
+    "interpretation": "Handoff accepted for QUALIVANTA review; acceptance is not a compliance outcome."
+   }
+  }
+ ]
+}

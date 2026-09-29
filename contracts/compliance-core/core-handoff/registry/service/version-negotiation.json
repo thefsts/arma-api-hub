@@ -1,0 +1,18 @@
+{
+ "description": "Version negotiation. The Hub presents a wire version; the Core resolves it to a supported governed version. An unsupported version fails closed with UNSUPPORTED_VERSION (HTTP 400). No silent downgrade, no implicit upgrade.",
+ "referenceDate": "2026-09-16",
+ "supportedApiVersions": [
+  "v1"
+ ],
+ "defaultApiVersion": "v1",
+ "wireToCoreVersion": {
+  "1.0.0": "v1",
+  "1.1.0": "v1"
+ },
+ "unsupportedCode": "UNSUPPORTED_VERSION",
+ "rules": [
+  "A requested version equal to a supported governed version is accepted as-is.",
+  "A requested version present in wireToCoreVersion is mapped to its governed version.",
+  "Any other version (missing, malformed, or unknown) fails closed to UNSUPPORTED_VERSION."
+ ]
+}
