@@ -1,0 +1,341 @@
+{
+ "description": "Closed LIVE SERVICE operation registry — a projection of the EXISTING Chat 2 runtime operation catalog. Adding an operation to the catalog is the ONLY way to expose it here. No business logic is duplicated; each operation carries its authoritative Chat 1 authorization scope.",
+ "referenceDate": "2026-09-16",
+ "counts": {
+  "operations": 26,
+  "governedActions": 11
+ },
+ "operations": [
+  {
+   "operationId": "applicability.record",
+   "kind": "WRITE",
+   "requiredScope": "runtime:write",
+   "resourceType": "applicabilityAssessment",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": null,
+   "description": "Record an applicability assessment for a control/requirement."
+  },
+  {
+   "operationId": "applicability.get",
+   "kind": "READ",
+   "requiredScope": "runtime:read",
+   "resourceType": "applicabilityAssessment",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": "compliance.applicability.read",
+   "description": "Read a single applicability assessment by id."
+  },
+  {
+   "operationId": "activation.record",
+   "kind": "WRITE",
+   "requiredScope": "runtime:write",
+   "resourceType": "controlActivation",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": null,
+   "description": "Record a control activation (runtime activation state)."
+  },
+  {
+   "operationId": "activation.get",
+   "kind": "READ",
+   "requiredScope": "runtime:read",
+   "resourceType": "controlActivation",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": "compliance.controls.read",
+   "description": "Read a single control activation by id."
+  },
+  {
+   "operationId": "controlRuntimeState.record",
+   "kind": "WRITE",
+   "requiredScope": "runtime:write",
+   "resourceType": "controlRuntimeState",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": null,
+   "description": "Record the current runtime state of a control for a product."
+  },
+  {
+   "operationId": "verification.plan.create",
+   "kind": "WRITE",
+   "requiredScope": "verification:write",
+   "resourceType": "verificationPlan",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": null,
+   "description": "Create a verification plan."
+  },
+  {
+   "operationId": "verification.execution.submit",
+   "kind": "WRITE",
+   "requiredScope": "verification:write",
+   "resourceType": "verificationExecution",
+   "idempotencyScope": "verification-submission",
+   "evidenceSensitive": false,
+   "governedAction": "compliance.verification.submit",
+   "description": "Submit a verification execution (idempotent)."
+  },
+  {
+   "operationId": "verification.execution.get",
+   "kind": "READ",
+   "requiredScope": "verification:read",
+   "resourceType": "verificationExecution",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": null,
+   "description": "Read a single verification execution by id."
+  },
+  {
+   "operationId": "verification.result.record",
+   "kind": "WRITE",
+   "requiredScope": "verification:write",
+   "resourceType": "verificationResult",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": "compliance.verification.submit",
+   "description": "Record a bounded verification result."
+  },
+  {
+   "operationId": "evidence.record",
+   "kind": "WRITE",
+   "requiredScope": "evidence:write",
+   "resourceType": "evidenceRecord",
+   "idempotencyScope": "evidence-receipt",
+   "evidenceSensitive": true,
+   "governedAction": "compliance.evidence.metadata.write",
+   "description": "Record evidence metadata + secure reference (metadata-first)."
+  },
+  {
+   "operationId": "evidence.get",
+   "kind": "READ",
+   "requiredScope": "evidence:read",
+   "resourceType": "evidenceRecord",
+   "idempotencyScope": null,
+   "evidenceSensitive": true,
+   "governedAction": null,
+   "description": "Read a single evidence record (metadata) by id."
+  },
+  {
+   "operationId": "evidence.candidate.propose",
+   "kind": "WRITE",
+   "requiredScope": "evidence:write",
+   "resourceType": "evidenceCandidate",
+   "idempotencyScope": null,
+   "evidenceSensitive": true,
+   "governedAction": "compliance.evidence.metadata.write",
+   "description": "Propose a verification-generated evidence candidate (PROPOSED only)."
+  },
+  {
+   "operationId": "observation.record",
+   "kind": "WRITE",
+   "requiredScope": "runtime:write",
+   "resourceType": "observation",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": null,
+   "description": "Record an observation/finding."
+  },
+  {
+   "operationId": "observation.get",
+   "kind": "READ",
+   "requiredScope": "runtime:read",
+   "resourceType": "observation",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": null,
+   "description": "Read a single observation by id."
+  },
+  {
+   "operationId": "exception.request",
+   "kind": "WRITE",
+   "requiredScope": "exception:write",
+   "resourceType": "exception",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": null,
+   "description": "Request an exception."
+  },
+  {
+   "operationId": "exception.decide",
+   "kind": "WRITE",
+   "requiredScope": "exception:approve",
+   "resourceType": "exception",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": null,
+   "description": "Approve or reject an exception (no permanent silent bypasses)."
+  },
+  {
+   "operationId": "exception.get",
+   "kind": "READ",
+   "requiredScope": "exception:read",
+   "resourceType": "exception",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": null,
+   "description": "Read a single exception by id."
+  },
+  {
+   "operationId": "remediation.create",
+   "kind": "WRITE",
+   "requiredScope": "remediation:write",
+   "resourceType": "remediation",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": null,
+   "description": "Create a remediation for a finding."
+  },
+  {
+   "operationId": "remediation.action.record",
+   "kind": "WRITE",
+   "requiredScope": "remediation:write",
+   "resourceType": "remediationAction",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": null,
+   "description": "Record a remediation action."
+  },
+  {
+   "operationId": "remediation.close",
+   "kind": "WRITE",
+   "requiredScope": "remediation:write",
+   "resourceType": "remediation",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": null,
+   "description": "Close a remediation (requires VERIFIED verification + reason)."
+  },
+  {
+   "operationId": "remediation.reopen",
+   "kind": "WRITE",
+   "requiredScope": "remediation:write",
+   "resourceType": "remediation",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": null,
+   "description": "Reopen a remediation (append-only history; finding preserved)."
+  },
+  {
+   "operationId": "remediation.get",
+   "kind": "READ",
+   "requiredScope": "remediation:read",
+   "resourceType": "remediation",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": null,
+   "description": "Read a single remediation by id."
+  },
+  {
+   "operationId": "readiness.snapshot.record",
+   "kind": "WRITE",
+   "requiredScope": "readiness:write",
+   "resourceType": "readinessSnapshot",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": null,
+   "description": "Record an internal readiness snapshot (never external certification)."
+  },
+  {
+   "operationId": "readiness.snapshot.get",
+   "kind": "READ",
+   "requiredScope": "readiness:read",
+   "resourceType": "readinessSnapshot",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": "compliance.assessment.read",
+   "description": "Read a single readiness snapshot by id."
+  },
+  {
+   "operationId": "drift.record",
+   "kind": "WRITE",
+   "requiredScope": "runtime:write",
+   "resourceType": "runtimeDrift",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": null,
+   "description": "Record a verification/evidence drift observation."
+  },
+  {
+   "operationId": "drift.get",
+   "kind": "READ",
+   "requiredScope": "runtime:read",
+   "resourceType": "runtimeDrift",
+   "idempotencyScope": null,
+   "evidenceSensitive": false,
+   "governedAction": "compliance.drift.read",
+   "description": "Read a single drift record by id."
+  }
+ ],
+ "governedActions": [
+  {
+   "action": "compliance.applicability.read",
+   "operations": [
+    "applicability.get"
+   ],
+   "delegation": null
+  },
+  {
+   "action": "compliance.controls.read",
+   "operations": [
+    "activation.get"
+   ],
+   "delegation": null
+  },
+  {
+   "action": "compliance.verification.submit",
+   "operations": [
+    "verification.execution.submit",
+    "verification.result.record"
+   ],
+   "delegation": null
+  },
+  {
+   "action": "compliance.evidence.metadata.write",
+   "operations": [
+    "evidence.record",
+    "evidence.candidate.propose"
+   ],
+   "delegation": null
+  },
+  {
+   "action": "compliance.assessment.read",
+   "operations": [
+    "readiness.snapshot.get"
+   ],
+   "delegation": null
+  },
+  {
+   "action": "compliance.drift.read",
+   "operations": [
+    "drift.get"
+   ],
+   "delegation": null
+  },
+  {
+   "action": "compliance.policy.distribute",
+   "operations": [],
+   "delegation": "convex/lifecycleApi.ts (Chat 3 policy lifecycle governed API)"
+  },
+  {
+   "action": "compliance.adoption.receipt.submit",
+   "operations": [],
+   "delegation": "convex/lifecycleApi.ts (Chat 3 policy lifecycle governed API)"
+  },
+  {
+   "action": "compliance.rollback.request",
+   "operations": [],
+   "delegation": "convex/lifecycleApi.ts (Chat 3 policy lifecycle governed API)"
+  },
+  {
+   "action": "compliance.legal.change.read",
+   "operations": [],
+   "delegation": "convex/legalApi.ts (Chat 4 legal/regulatory governed API)"
+  },
+  {
+   "action": "compliance.health.read",
+   "operations": [],
+   "delegation": "convex/service.ts (complianceServiceHealth query)"
+  }
+ ]
+}

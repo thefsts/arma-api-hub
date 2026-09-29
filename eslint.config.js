@@ -11,6 +11,10 @@ export default tseslint.config(
       '**/coverage/**',
       '**/*.d.ts',
       '**/_generated/**',
+      // Vendored, pinned Compliance Core conformance fixture (upstream code at a
+      // recorded Core SHA). It carries its own Core-side gates; the API Hub does
+      // not restyle or re-lint upstream source.
+      'tests/fixtures/core-handoff/**',
     ],
   },
   js.configs.recommended,

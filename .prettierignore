@@ -5,3 +5,5 @@ coverage
 pnpm-lock.yaml
 *.md
 convex/_generated
+tests/fixtures/core-handoff
+contracts/compliance-core/core-handoff

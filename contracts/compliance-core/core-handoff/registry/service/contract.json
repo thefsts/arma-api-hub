@@ -1,0 +1,43 @@
+{
+ "description": "LIVE COMPLIANCE SERVICE contract between Compliance Core and the ARMA API Hub. The Hub owns transport; Compliance Core owns compliance authority. Every call traverses the single governed pipeline (runGovernedPipeline); there is no bypass route and no client-supplied tenant authority or compliance verdict.",
+ "referenceDate": "2026-09-16",
+ "handoffId": "FSTS-COMPLIANCE-CORE-LIVE-SERVICE",
+ "handoffVersion": "1.0.0",
+ "engine": "fsts-compliance-core-service",
+ "contractVersion": "1.0.0",
+ "idempotencyScope": "compliance-service",
+ "auditSource": "convex/service.invokeComplianceService",
+ "supportedApiVersions": [
+  "v1"
+ ],
+ "defaultApiVersion": "v1",
+ "wireToCoreVersion": {
+  "1.0.0": "v1",
+  "1.1.0": "v1"
+ },
+ "entrypoints": {
+  "invoke": "service.invokeComplianceService",
+  "describe": "service.describeComplianceService",
+  "contract": "service.getComplianceServiceContract",
+  "health": "service.complianceServiceHealth",
+  "readiness": "service.complianceServiceReadiness",
+  "registerContracts": "service.registerComplianceServiceContracts"
+ },
+ "counts": {
+  "operations": 26,
+  "scopes": 22,
+  "governedActions": 11,
+  "failureCodes": 18,
+  "mandatedFailureCodes": 17
+ },
+ "fingerprint": "applicability.record:WRITE:runtime:write|applicability.get:READ:runtime:read|activation.record:WRITE:runtime:write|activation.get:READ:runtime:read|controlRuntimeState.record:WRITE:runtime:write|verification.plan.create:WRITE:verification:write|verification.execution.submit:WRITE:verification:write|verification.execution.get:READ:verification:read|verification.result.record:WRITE:verification:write|evidence.record:WRITE:evidence:write|evidence.get:READ:evidence:read|evidence.candidate.propose:WRITE:evidence:write|observation.record:WRITE:runtime:write|observation.get:READ:runtime:read|exception.request:WRITE:exception:write|exception.decide:WRITE:exception:approve|exception.get:READ:exception:read|remediation.create:WRITE:remediation:write|remediation.action.record:WRITE:remediation:write|remediation.close:WRITE:remediation:write|remediation.reopen:WRITE:remediation:write|remediation.get:READ:remediation:read|readiness.snapshot.record:WRITE:readiness:write|readiness.snapshot.get:READ:readiness:read|drift.record:WRITE:runtime:write|drift.get:READ:runtime:read",
+ "honestyInvariants": [
+  "PASS != COMPLIANT",
+  "IMPLEMENTED != CERTIFIED",
+  "READY != CERTIFIED",
+  "APPROVED != RELEASED",
+  "RELEASED != ADOPTED",
+  "RECEIVED != APPLIED"
+ ],
+ "recordStatus": "EXAMPLE"
+}

@@ -1,0 +1,41 @@
+{
+ "description": "Idempotency + replay semantics. The service boundary rides the SAME authoritative Chat 1 idempotency foundation (idempotencyRecords) — it never re-implements it. The idempotency key is signed; the same key with the same request replays, the same key with a different request conflicts.",
+ "referenceDate": "2026-09-16",
+ "scope": "compliance-service",
+ "signedFields": [
+  "apiVersion",
+  "tenantId",
+  "serviceIdentityId",
+  "productId",
+  "environment",
+  "action",
+  "resourceType",
+  "resourceId",
+  "timestamp",
+  "nonce",
+  "requestId",
+  "correlationId",
+  "idempotencyKey",
+  "payloadHash"
+ ],
+ "idempotencyFields": [
+  "apiVersion",
+  "tenantId",
+  "serviceIdentityId",
+  "productId",
+  "environment",
+  "action",
+  "resourceType",
+  "resourceId",
+  "payloadHash"
+ ],
+ "freshnessWindowMs": 300000,
+ "futureSkewMs": 30000,
+ "semantics": {
+  "replay": "Same idempotency key + same request fields returns the stored outcome reference (replayed=true) with no re-execution.",
+  "conflict": "Same idempotency key + different request fields fails closed with IDEMPOTENCY_CONFLICT (HTTP 409).",
+  "nonce": "The nonce is consumed at most once per service identity; a reused nonce fails closed with REPLAY_DENIED.",
+  "staleness": "A request outside the freshness window (or beyond the future skew) fails closed with STALE_REQUEST.",
+  "integrity": "A payload that does not hash to the signed payloadHash fails closed with INTEGRITY_FAILED."
+ }
+}

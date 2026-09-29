@@ -1,0 +1,53 @@
+{
+ "description": "Health / readiness contract. HEALTHY != COMPLIANT and READY != CERTIFIED: these are operational signals about whether the service boundary can process governed requests, never whether any tenant, product, or control is compliant. Both reports carry complianceClaim=NONE and certificationClaim=NONE.",
+ "referenceDate": "2026-09-16",
+ "health": {
+  "query": "service.complianceServiceHealth",
+  "statuses": [
+   "HEALTHY",
+   "DEGRADED",
+   "UNHEALTHY"
+  ],
+  "checks": [
+   {
+    "name": "governed-pipeline",
+    "detail": "every call traverses runGovernedPipeline"
+   },
+   {
+    "name": "operation-registry",
+    "detail": "operations projected from the closed catalog"
+   },
+   {
+    "name": "failure-taxonomy",
+    "detail": "17 mandated bounded failure codes present"
+   },
+   {
+    "name": "honesty-guards",
+    "detail": "PASS != COMPLIANT enforced"
+   }
+  ]
+ },
+ "readiness": {
+  "query": "service.complianceServiceReadiness",
+  "statuses": [
+   "READY",
+   "NOT_READY"
+  ],
+  "checks": [
+   {
+    "name": "version-negotiation",
+    "detail": "serves the supported governed versions"
+   },
+   {
+    "name": "operation-registry",
+    "detail": "closed catalog projected"
+   },
+   {
+    "name": "contract-registry",
+    "detail": "contracts registered via registerComplianceServiceContracts"
+   }
+  ]
+ },
+ "complianceClaim": "NONE",
+ "certificationClaim": "NONE"
+}

@@ -1,0 +1,63 @@
+{
+ "description": "Scope registry. The authoritative Core scopes are the union of the EXISTING governed scope vocabularies this boundary serves (Chat 2 catalog actions, Chat 3 lifecycle actions, Chat 1 audit scope). The Hub transports its least-privilege scope vocabulary; the Core authorizes against its OWN scopes. A Hub scope maps to one or more Core scopes.",
+ "referenceDate": "2026-09-16",
+ "counts": {
+  "coreScopes": 22,
+  "hubScopes": 8
+ },
+ "coreScopes": [
+  "audit:write",
+  "evidence:read",
+  "evidence:write",
+  "exception:approve",
+  "exception:read",
+  "exception:write",
+  "lifecycle:adopt",
+  "lifecycle:approve",
+  "lifecycle:distribute",
+  "lifecycle:hold",
+  "lifecycle:read",
+  "lifecycle:release",
+  "lifecycle:rollback",
+  "lifecycle:write",
+  "readiness:read",
+  "readiness:write",
+  "remediation:read",
+  "remediation:write",
+  "runtime:read",
+  "runtime:write",
+  "verification:read",
+  "verification:write"
+ ],
+ "hubScopeToCoreScopes": {
+  "compliance.read": [
+   "runtime:read",
+   "verification:read",
+   "evidence:read",
+   "exception:read",
+   "remediation:read",
+   "readiness:read"
+  ],
+  "compliance.write": [
+   "runtime:write"
+  ],
+  "verification.submit": [
+   "verification:write"
+  ],
+  "evidence.metadata.write": [
+   "evidence:write"
+  ],
+  "policy.distribute": [
+   "lifecycle:distribute"
+  ],
+  "adoption.receipt.submit": [
+   "lifecycle:adopt"
+  ],
+  "rollback.request": [
+   "lifecycle:rollback"
+  ],
+  "telemetry.write": [
+   "audit:write"
+  ]
+ }
+}
