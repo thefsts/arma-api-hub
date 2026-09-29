@@ -9,6 +9,7 @@
   "references": [
     { "path": "../../packages/config" },
     { "path": "../../packages/contracts" },
+    { "path": "../../packages/compliance-core-client" },
     { "path": "../../packages/events" },
     { "path": "../../packages/observability" },
     { "path": "../../packages/policy" }

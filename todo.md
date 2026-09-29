@@ -1,42 +1,47 @@
-# ARMA API HUB — Phase 0 Convex Security Hold Corrections
+# ARMA API HUB — Phase 8 Integration Review and Hardening
 
-## 1. Return validators on every Convex function
-- [x] Add accurate `returns` validator to all 121 functions (convex/lib/returns.ts)
-- [x] Add repo test failing when a function lacks `args` or `returns` (tests/convex/guardrails.test.ts)
+## 1. Establish baseline
+- [x] Fetch main + PR branches; record SHAs (main 356d00b, PR3 98ca214, PR4 d240470)
+- [x] Read repo instructions, ADRs, boundaries, cost boundaries, Compliance Core handoff
+- [x] Create isolated branch phase8/api-hub-integration-review (from origin/main 356d00b)
 
-## 2. Tenant and resource authorization
-- [x] Server-derived authorization context (subject/service -> scopes) (convex/lib/authz.ts)
-- [x] Enforce scope on every read (systems, services, tenants, customers, credentials, idempotency, nonces, webhooks, health, incidents, cost, usage, budgets, quotas, limits, audit)
-- [x] Global admin only when explicitly modeled/audited/tested (principalAuthorizations.global)
+## 2. Integrate and review existing work
+- [x] Merge PR #3 (onboarding + routing) into integration branch
+- [x] Merge PR #4 (PATCHES/Law Shield descriptors) into integration branch
+- [x] Review combined implementation; baseline 214 tests pass, 127 internal functions
+- [x] Confirmed defects:
+      D1 scope-key mismatch: getByProductTenant/listByProduct scope on productId not routing identity
+      D2 register not idempotent despite PR claim (CONFLICT on identical replay)
+      D3 decideRouting fail-open on non-finite `now` (expiry bypass)
+      D4 conflicting authorization: no uniqueness on (product,tenant,env); route uses .first()
+      D5 dispatch-path gap: routing gate not wired into any transport path
+- [x] Fix confirmed defects D1-D4 (productOnboardings.ts, productRouting.ts)
+- [x] Add governed dispatch boundary (D5) + wire into worker; prove no bypass
+      (compliance-core-client createGovernedDispatcher, worker governedDispatch.ts, 14 tests)
+- [x] Regression suite for D1-D5 (onboarding-hardening.test.ts, 13 tests pass)
+- [x] Trace service API + worker dispatch paths; document no-bypass proof
+      (transport.forward has exactly 1 caller = createGovernedDispatcher; only reachable via createGovernedJobHandler; API app /v1/validate does NOT route/dispatch)
 
-## 3. Service-identity binding
-- [x] Bind service callers to server-derived service identity (requireServiceBinding)
-- [x] Reject mismatched serviceId
-- [x] Negative tests: service A cannot read/affect service B (tests/security/service-binding.test.ts)
+## 3. Preserve platform ownership
+- [x] Confirm no direct Core DB access / no duplicated policy engine
+      (no _generated/ConvexHttpClient/from convex in apps+packages; @arma/policy is Hub admission control, not compliance adjudication)
+- [x] Confirm cost boundary preserved (API Hub / AI Hub / REGIVANTA)
+      (COST_OWNERSHIP + cost.ts: API Hub authoritative for external vendor charges; AI Hub references; REGIVANTA owns margin/budget)
+- [x] Confirm shared correlation/cost-event IDs, no duplicate charges
+      (costEventEnvelopeSchema carries shared correlationId + costEventId; API Hub never emits profit/margin/company-wide cost)
 
-## 4. Reactive time-dependent queries
-- [x] Remove Date.now() from query handlers (capabilities.hasCapability reads materialized status)
-- [x] Deterministic design + ADR (docs/security/ADR-0005-authentication-decision.md)
-- [x] Search all public queries for nondeterminism (guardrail rule)
+## 4. Validate combined result
+- [x] Run full validation pipeline (format:check, lint, typecheck, convex:guardrails, test, build, secret:scan, deps:check) -> EXIT=0
+- [x] Run focused integration/security tests (governed-dispatch 14, onboarding-hardening 13; full suite 22 files / 241 tests)
+- [x] Demonstrate authorized path reaches Core boundary; unauthorized rejected pre-dispatch
+      (authorized ACTIVE forwarded exactly once; all denials -> calls.length===0)
+- [x] Demonstrate suspension/revocation/replay/idempotency/outage fail safe
+- [x] Confirm transport success never fabricates compliance verdict
+      (dispatcher returns bounded TransportResult only; assertTransportDoesNotManufactureCoreState)
+- [x] Confirm Convex args/returns + internal-only model retained (127 internal / 0 public, all args+returns)
 
-## 5. Auth configuration
-- [x] convex/auth.config.ts decision documented + implemented (Option 2: internal functions)
-- [x] No fake provider, no hard-coded claims
-
-## 6. Role-claim trust
-- [x] Verify claim origin from trusted issuer (ARMA_TRUSTED_ISSUER, fail closed)
-- [x] Fail closed on missing/malformed/conflicting
-- [x] Tests for forged/missing/unknown/conflicting claims (tests/security/role-claims.test.ts)
-
-## 7. Cost-data isolation tests
-- [x] tenant A/B, customer A/B, service A/B, viewer/operator scope, correlation-ID, cost-event-ID, vendor-period, REGIVANTA export, AI Hub association (tests/security/cost-isolation.test.ts)
-
-## 8. CI enforcement
-- [x] Fail on missing args/returns, Date.now() in query, unbounded collect, .filter(), public sensitive fn without authz, unverified service ID, missing auth config (scripts/convex-guardrails.mjs + ci.yml)
-
-## 9. Report and PR accuracy
-- [x] Fetch main, recalc SHA/ahead-behind/files/insertions
-- [x] Update PR description
-- [x] Re-run all validation
-- [x] Leave PR #1 open/unmerged
-- [x] Final report
+## 5. Deliver for PM review
+- [ ] Push integration branch
+- [ ] Open DRAFT PR with baseline/SHAs, defects/fixes, validation, blockers, merge order
+- [ ] Confirm no secrets/customer data committed
+- [ ] Ensure green CI

@@ -16,7 +16,11 @@
 import { v } from 'convex/values';
 import { internalMutation, internalQuery } from './_generated/server';
 import { onboardingStateValidator } from './lib/validators';
-import { requireAuthorizationContext, requireServiceScope } from './lib/authz';
+import {
+  requireAuthorizationContext,
+  requireServiceScope,
+  filterByServiceScope,
+} from './lib/authz';
 import { fail } from './lib/errors';
 import { newId } from './lib/ids';
 import {
@@ -49,9 +53,60 @@ const productOnboardingDoc = v.object({
 });
 
 /**
+ * True when an existing onboarding carries exactly the governed fields a
+ * re-registration supplies. Used to make `register` idempotent: a replay of the
+ * same request returns the existing id, while a different payload under the
+ * same id is a conflict.
+ */
+function sameGovernedContent(
+  existing: {
+    productId: string;
+    tenantId: string;
+    environment: string;
+    hubRoutingIdentity: string;
+    allowedScopes: string[];
+    allowedOperations: string[];
+    credentialReference: string;
+    contractVersion: string;
+    credentialExpiresAt?: number;
+  },
+  args: {
+    productId: string;
+    tenantId: string;
+    environment: string;
+    hubRoutingIdentity: string;
+    allowedScopes: string[];
+    allowedOperations: string[];
+    credentialReference: string;
+    contractVersion: string;
+    credentialExpiresAt?: number;
+  },
+): boolean {
+  const sameList = (a: readonly string[], b: readonly string[]): boolean =>
+    a.length === b.length && a.every((value, i) => value === b[i]);
+  return (
+    existing.productId === args.productId &&
+    existing.tenantId === args.tenantId &&
+    existing.environment === args.environment &&
+    existing.hubRoutingIdentity === args.hubRoutingIdentity &&
+    sameList(existing.allowedScopes, args.allowedScopes) &&
+    sameList(existing.allowedOperations, args.allowedOperations) &&
+    existing.credentialReference === args.credentialReference &&
+    existing.contractVersion === args.contractVersion &&
+    existing.credentialExpiresAt === args.credentialExpiresAt
+  );
+}
+
+/**
  * Register a new product onboarding in PROPOSED state. Privileged internal
  * mutation: the caller (an FSTS operator surface) supplies the governed
  * identity. The onboarding is NOT consumable until it reaches ACTIVE.
+ *
+ * Idempotent by `onboardingId`: replaying the identical governed payload
+ * returns the existing id; a different payload under the same id is a
+ * conflict. At most one onboarding may bind a given
+ * (productId, tenantId, environment); a second, different onboarding for the
+ * same binding fails closed rather than creating ambiguous routing authority.
  */
 export const register = internalMutation({
   args: {
@@ -74,7 +129,28 @@ export const register = internalMutation({
       .withIndex('by_onboardingId', (q) => q.eq('onboardingId', onboardingId))
       .first();
     if (existing) {
-      fail('CONFLICT', 'A product onboarding with this id already exists.', { onboardingId });
+      // Idempotent replay: an identical governed payload returns the same id.
+      if (sameGovernedContent(existing, args)) return existing.onboardingId;
+      fail('CONFLICT', 'A product onboarding with this id already exists with different content.', {
+        onboardingId,
+      });
+    }
+    // Conflicting authorization: at most one onboarding may bind a given
+    // (product, tenant, environment). A second, different onboarding for the
+    // same binding fails closed instead of creating ambiguous routing.
+    const siblings = await ctx.db
+      .query('productOnboardings')
+      .withIndex('by_productId_tenantId', (q) =>
+        q.eq('productId', args.productId).eq('tenantId', args.tenantId),
+      )
+      .take(10);
+    const conflict = siblings.find((row) => row.environment === args.environment);
+    if (conflict) {
+      fail(
+        'CONFLICT',
+        'A product onboarding already binds this product, tenant, and environment.',
+        { onboardingId: conflict.onboardingId },
+      );
     }
     const now = Date.now();
     await ctx.db.insert('productOnboardings', {
@@ -172,28 +248,34 @@ export const getByProductTenant = internalQuery({
   returns: v.union(productOnboardingDoc, v.null()),
   handler: async (ctx, args) => {
     const authz = await requireAuthorizationContext(ctx);
-    requireServiceScope(authz, args.productId);
-    return await ctx.db
+    const record = await ctx.db
       .query('productOnboardings')
       .withIndex('by_productId_tenantId', (q) =>
         q.eq('productId', args.productId).eq('tenantId', args.tenantId),
       )
       .first();
+    if (record === null) return null;
+    // Scope on the onboarding's Hub routing identity (the service identity the
+    // product calls as), never on the product id. The product id is not a
+    // service identity and must not be used as an authorization key.
+    requireServiceScope(authz, record.hubRoutingIdentity);
+    return record;
   },
 });
 
-/** List onboardings for a product. */
+/** List onboardings for a product, filtered to the caller's service scope. */
 export const listByProduct = internalQuery({
   args: { productId: v.string(), limit: v.optional(v.number()) },
   returns: v.array(productOnboardingDoc),
   handler: async (ctx, args) => {
     const authz = await requireAuthorizationContext(ctx);
-    requireServiceScope(authz, args.productId);
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
-    return await ctx.db
+    const rows = await ctx.db
       .query('productOnboardings')
       .withIndex('by_productId', (q) => q.eq('productId', args.productId))
       .take(limit);
+    // Only onboardings whose Hub routing identity the caller may access.
+    return filterByServiceScope(authz, rows, (row) => row.hubRoutingIdentity);
   },
 });
 
@@ -238,12 +320,22 @@ export const route = internalQuery({
   handler: async (ctx, args) => {
     const authz = await requireAuthorizationContext(ctx);
     requireServiceScope(authz, args.hubRoutingIdentity);
-    const record = await ctx.db
+    const rows = await ctx.db
       .query('productOnboardings')
       .withIndex('by_productId_tenantId', (q) =>
         q.eq('productId', args.productId).eq('tenantId', args.tenantId),
       )
-      .first();
+      .take(10);
+    // Conflicting authorization: more than one onboarding claims the same
+    // (product, tenant, environment) binding. Fail closed rather than pick one.
+    const matching = rows.filter((row) => row.environment === args.environment);
+    if (matching.length > 1) {
+      return { allowed: false as const, code: 'CONFLICT' as const };
+    }
+    // When no row matches the requested environment, fall back to the first row
+    // so the pure decision reports ENVIRONMENT_DENIED (no silent environment
+    // escalation); a genuinely absent onboarding reports PRODUCT_DENIED.
+    const record = matching[0] ?? rows[0] ?? null;
     const onboarding: ProductOnboardingRecord | null = record
       ? {
           productId: record.productId,

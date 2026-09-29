@@ -95,6 +95,11 @@ export const ROUTING_DENIAL_CODES = [
   'UNSUPPORTED_VERSION',
   'UNKNOWN_OPERATION',
   'SCOPE_DENIED',
+  // A non-finite evaluation time (the credential-expiry clock) fails closed.
+  'VALIDATION_FAILED',
+  // More than one onboarding claims the same (product, tenant, environment)
+  // binding: conflicting authorization fails closed rather than picking one.
+  'CONFLICT',
 ] as const;
 
 export type RoutingDenialCode = (typeof ROUTING_DENIAL_CODES)[number];
@@ -201,10 +206,10 @@ function deny(code: RoutingDenialCode): RoutingDenial {
  * Decide whether the Hub may route a product request onto the governed Core
  * path. Fail-closed order (deny at the earliest violated step):
  *
- *   onboarding present -> product binding -> tenant binding -> environment ->
- *   onboarding ACTIVE -> history not forged -> credential reference present/
- *   unexpired -> contract version -> api version -> operation allowed ->
- *   scope allowed -> routing identity match.
+ *   evaluation clock finite -> onboarding present -> product binding ->
+ *   tenant binding -> environment -> onboarding ACTIVE -> history not forged ->
+ *   credential reference present/unexpired -> contract version -> api version ->
+ *   operation allowed -> scope allowed -> routing identity match.
  *
  * Returns an ALLOW with the resolved route, or a bounded DENY code. Never
  * throws; never widens a request.
@@ -214,7 +219,13 @@ export function decideRouting(
   onboarding: ProductOnboardingRecord | null | undefined,
   now: number,
 ): RoutingDecision {
-  // 0. Onboarding must exist.
+  // 0. The evaluation clock must be a finite server-supplied number. A
+  //    non-finite `now` would make the credential-expiry comparison
+  //    (`expiresAt <= now`) evaluate false and silently admit an expired
+  //    credential, so it fails closed before any other check.
+  if (typeof now !== 'number' || !Number.isFinite(now)) return deny('VALIDATION_FAILED');
+
+  // 1. Onboarding must exist.
   if (!onboarding) return deny('PRODUCT_DENIED');
 
   // 1. Product binding — a product may not impersonate another product.

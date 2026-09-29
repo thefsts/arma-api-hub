@@ -793,3 +793,117 @@ export interface ComplianceCoreTransport {
   /** Connector health for the Compliance Core connection. */
   health(): Promise<TransportHealth>;
 }
+
+// ---------------------------------------------------------------------------
+// Governed dispatch boundary \u2014 the single choke point that enforces the Hub's
+// onboarding routing gate BEFORE any transport to the Compliance Core.
+//
+// The Hub transports; the Core decides. This boundary makes the routing gate
+// MANDATORY: a request that is not explicitly ALLOWED by the server-derived
+// routing gate is never forwarded, and a transport outcome is never turned into
+// a compliance verdict. `routing` is a transport-owned concern (see
+// TRANSPORT_OWNED_CONCERNS), so the gate is composed here rather than
+// re-implemented.
+// ---------------------------------------------------------------------------
+
+/** The resolved route an ALLOW carries (authority-bearing fields only). */
+export interface RoutingRoute {
+  readonly productId: string;
+  readonly tenantId: string;
+  readonly environment: string;
+  readonly hubRoutingIdentity: string;
+  readonly operation: string;
+  readonly scope: string;
+  readonly contractVersion: string;
+  readonly apiVersion: string;
+  readonly credentialReference: string;
+}
+
+/** The request the Hub asks the routing gate to decide. */
+export interface RoutingGateRequest {
+  readonly productId: string;
+  readonly tenantId: string;
+  readonly environment: string;
+  readonly hubRoutingIdentity: string;
+  readonly operation: string;
+  readonly scope: string;
+  readonly contractVersion: string;
+  readonly apiVersion: string;
+}
+
+export type RoutingDecision =
+  | { readonly allowed: true; readonly route: RoutingRoute }
+  | { readonly allowed: false; readonly code: string };
+
+/**
+ * The server-derived routing gate. In production this is the Hub's Convex
+ * `productOnboardings.route` internal query, which loads the onboarding from
+ * durable server-side records and enforces the caller's service scope. It is
+ * injected so the dispatch boundary never re-implements the decision.
+ */
+export type RoutingGate = (request: RoutingGateRequest) => Promise<RoutingDecision>;
+
+export interface GovernedDispatchInput {
+  readonly request: RoutingGateRequest;
+  /** The signed governed envelope forwarded to the Core. */
+  readonly signed: GovernedRequest;
+  /** The governed body (canonical serialization of the payload). */
+  readonly governedBody: string;
+}
+
+export type GovernedDispatchResult =
+  | {
+      readonly dispatched: true;
+      /** The bounded transport result. Never a compliance verdict. */
+      readonly transport: TransportResult;
+      readonly correlationId: string;
+    }
+  | { readonly dispatched: false; readonly code: string };
+
+export interface GovernedDispatcher {
+  dispatch(input: GovernedDispatchInput): Promise<GovernedDispatchResult>;
+}
+
+/**
+ * Build the governed dispatch boundary. `dispatch` consults the routing gate
+ * first and forwards to the transport ONLY on an explicit ALLOW whose resolved
+ * route matches the signed envelope on the authority-bearing isolation
+ * dimensions (product, tenant, environment). Every denial short-circuits before
+ * any transport call, so a governed request can never bypass onboarding or
+ * authorization.
+ */
+export function createGovernedDispatcher(deps: {
+  readonly gate: RoutingGate;
+  readonly transport: ComplianceCoreTransport;
+}): GovernedDispatcher {
+  return {
+    async dispatch(input: GovernedDispatchInput): Promise<GovernedDispatchResult> {
+      let decision: RoutingDecision;
+      try {
+        decision = await deps.gate(input.request);
+      } catch {
+        // A gate that cannot produce a decision fails closed: never forward.
+        return { dispatched: false, code: 'ROUTING_GATE_ERROR' };
+      }
+      if (!decision.allowed) {
+        // Fail closed: the transport is never touched on a denial.
+        return { dispatched: false, code: decision.code };
+      }
+      // Defense in depth: the resolved route must match the signed envelope on
+      // every authority-bearing isolation dimension. A gate that allowed a
+      // different product/tenant/environment than the envelope carries is a
+      // mismatch and fails closed.
+      const route = decision.route;
+      const signed = input.signed;
+      if (
+        route.productId !== signed.productId ||
+        route.tenantId !== signed.tenantId ||
+        route.environment !== signed.environment
+      ) {
+        return { dispatched: false, code: 'ROUTE_ENVELOPE_MISMATCH' };
+      }
+      const transport = await deps.transport.forward(signed, input.governedBody);
+      return { dispatched: true, transport, correlationId: signed.correlationId };
+    },
+  };
+}
