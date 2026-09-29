@@ -35,6 +35,7 @@ import {
   incidentStatusValidator,
   killSwitchScopeValidator,
   lifecycleValidator,
+  onboardingStateValidator,
   optimizationKindValidator,
   ownershipValidator,
   principalTypeValidator,
@@ -748,4 +749,37 @@ export default defineSchema({
     .index('by_target', ['target'])
     .index('by_billingPeriod', ['billingPeriod'])
     .index('by_correlationId', ['correlationId']),
+
+  // Product onboarding registry (Phase 8).
+  //
+  // Binds a real FSTS product (ARMA System 360 is the first) to the governed
+  // Core path. This is the Hub's ROUTING registry, not a compliance authority:
+  // it records the governed product identity (product id, tenant, environment,
+  // Hub routing identity, allowed scopes, allowed operations, credential
+  // *reference*, contract version) and its onboarding lifecycle state.
+  //
+  // `credentialReference` is a key reference only (a P0-5 `keyId`); key
+  // material lives in a secrets manager. `history` is the append-only walk of
+  // the onboarding state machine so a forged ACTIVE claim (a state with no
+  // legal walk) fails closed at the routing gate. Only ACTIVE is consumable.
+  productOnboardings: defineTable({
+    onboardingId: v.string(),
+    productId: v.string(),
+    tenantId: v.string(),
+    environment: v.string(),
+    hubRoutingIdentity: v.string(),
+    allowedScopes: v.array(v.string()),
+    allowedOperations: v.array(v.string()),
+    credentialReference: v.string(),
+    contractVersion: v.string(),
+    state: onboardingStateValidator,
+    history: v.array(v.string()),
+    credentialExpiresAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_onboardingId', ['onboardingId'])
+    .index('by_productId', ['productId'])
+    .index('by_productId_tenantId', ['productId', 'tenantId'])
+    .index('by_state', ['state']),
 });
