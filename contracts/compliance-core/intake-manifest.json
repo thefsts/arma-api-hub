@@ -90,9 +90,42 @@
     "Do not onboard any FSTS product other than the Compliance Core connection.",
     "Do not weaken or bypass the fail-closed boundary to obtain a green result."
   ],
+  "dependencyObservations": {
+    "observedAt": "Phase 7 Chat 5 recon",
+    "summary": "Phase 7 Chat 1 has an OPEN, UNMERGED draft PR on the Core repo. Chats 2, 3 and 4 have no artifacts. No contract is merged to Core main, so the hold remains ACTIVE and the integration remains PENDING_DEPENDENCY.",
+    "entries": [
+      {
+        "chat": "Phase 7 Chat 1",
+        "observation": "DRAFT_IN_OPEN_PR",
+        "coreRepository": "thefsts/FSTS-COMPLIANCE-CORE",
+        "pullRequest": 26,
+        "branch": "phase7/production-identity-onboarding",
+        "branchSha": "2911268ecd3d1314e8bf47fcb6fbd65e4e18d977",
+        "artifact": "docs/PHASE7-ONBOARDING-CONTRACT.md",
+        "artifactStatus": "DRAFT - NOT MERGED",
+        "mergedToCoreMain": false,
+        "note": "Draft is authoritative-for-Chats-2-5 once merged. Consumed verbatim only after merge + PM review. No content is restated or invented here."
+      },
+      {
+        "chat": "Phase 7 Chat 2",
+        "observation": "NOT_AVAILABLE",
+        "note": "No branch, PR, or artifact exists."
+      },
+      {
+        "chat": "Phase 7 Chat 3",
+        "observation": "NOT_AVAILABLE",
+        "note": "No branch, PR, or artifact exists."
+      },
+      {
+        "chat": "Phase 7 Chat 4",
+        "observation": "NOT_AVAILABLE",
+        "note": "No branch, PR, or artifact exists."
+      }
+    ]
+  },
   "finalizationGate": {
     "rule": "The integration may be finalized only when every requiredContracts entry is status AVAILABLE and reviewed by the PM.",
     "currentResult": "BLOCKED",
-    "reason": "No Phase 7 Chat 1-4 artifacts are present in either repository."
+    "reason": "No Phase 7 Chat 1-4 contract is merged to Core main. Chat 1 exists only as a DRAFT in open, unmerged PR #26; Chats 2-4 have no artifacts. The hold is ACTIVE."
   }
 }

@@ -234,6 +234,15 @@ those artifacts are present and reviewed, the integration remains
 | Audit correlation contract | Phase 7 Chat 4 | PENDING |
 | Service-identity / credential exchange contract | Phase 7 Chat 4 | PENDING |
 
+**Observed dependency state (Chat 5 recon).** Phase 7 Chat 1 has an **open,
+unmerged draft PR** on the Core repo (`thefsts/FSTS-COMPLIANCE-CORE` PR #26,
+branch `phase7/production-identity-onboarding`, branch SHA `2911268`), carrying
+`docs/PHASE7-ONBOARDING-CONTRACT.md` marked `DRAFT — NOT MERGED`. Chats 2, 3 and
+4 have no branch, PR, or artifact. Because no contract is merged to Core `main`,
+the hold is **ACTIVE** and every entry above stays `PENDING`. The Chat 1 draft is
+consumed **verbatim only after merge + PM review**; no content from it is
+restated, approximated, or invented here.
+
 ## 14. What is prepared vs. what is pending
 
 **Prepared (this branch):** the transport-side boundary, the transport adapter
