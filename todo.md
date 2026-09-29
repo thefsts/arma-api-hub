@@ -41,7 +41,7 @@
 - [x] Confirm Convex args/returns + internal-only model retained (127 internal / 0 public, all args+returns)
 
 ## 5. Deliver for PM review
-- [ ] Push integration branch
-- [ ] Open DRAFT PR with baseline/SHAs, defects/fixes, validation, blockers, merge order
-- [ ] Confirm no secrets/customer data committed
-- [ ] Ensure green CI
+- [x] Push integration branch (phase8/api-hub-integration-review)
+- [x] Open DRAFT PR #6 with baseline/SHAs, defects/fixes, validation, blockers, merge order
+- [x] Confirm no secrets/customer data committed (secret:scan clean; only .env.example tracked)
+- [x] Ensure green CI (run 36615404727 = SUCCESS)
