@@ -1,4 +1,4 @@
-// Phase 7 · Chat 3 — PATCHES + Law Shield controlled onboarding: registration
+// Phase 8 · Chat 3 — PATCHES + Law Shield controlled onboarding: registration
 // isolation.
 //
 // PATCHES and Law Shield onboard onto the ARMA API Hub as TWO SEPARATELY

@@ -1,5 +1,6 @@
-# Product Registration Isolation — PATCHES + Law Shield (Phase 7 · Chat 3)
+# Product Registration Isolation — PATCHES + Law Shield (Phase 8 · Chat 3)
 
+- Phase: **Phase 8 — Chat 3** (PATCHES + Law Shield controlled onboarding lane)
 - Status: **ADDITIVE / NON-BREAKING**
 - Owner: Full Stack Tech & Solutions LLC — Platform / Integration lane
 - Compliance Core baseline: `thefsts/FSTS-COMPLIANCE-CORE` @
