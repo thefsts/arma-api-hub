@@ -19,6 +19,8 @@ import { onboardingStateValidator } from './lib/validators';
 import {
   requireAuthorizationContext,
   requireServiceScope,
+  requireAdminAuthority,
+  requireEnvironment,
   filterByServiceScope,
 } from './lib/authz';
 import { fail } from './lib/errors';
@@ -123,6 +125,18 @@ export const register = internalMutation({
   },
   returns: v.string(),
   handler: async (ctx, args) => {
+    // Creating onboarding authority is a privileged control-plane action. It is
+    // NOT "internal, therefore trusted": the caller must be a HUMAN
+    // administrator AND be authorized both for the target environment AND for
+    // the Hub routing identity being bound. A service identity can never
+    // self-register a product (SERVICE principals do not hold admin authority),
+    // and an administrator scoped to one service can never bind another
+    // service's routing identity. Fail closed before touching durable authority.
+    const authz = await requireAuthorizationContext(ctx);
+    requireAdminAuthority(authz);
+    requireEnvironment(authz, args.environment);
+    requireServiceScope(authz, args.hubRoutingIdentity);
+
     const onboardingId = args.onboardingId ?? newId('onb');
     const existing = await ctx.db
       .query('productOnboardings')
@@ -135,21 +149,28 @@ export const register = internalMutation({
         onboardingId,
       });
     }
-    // Conflicting authorization: at most one onboarding may bind a given
-    // (product, tenant, environment). A second, different onboarding for the
-    // same binding fails closed instead of creating ambiguous routing.
-    const siblings = await ctx.db
+    // Exact binding: at most one onboarding may bind a given
+    // (product, tenant, environment). Query the EXACT composite index so a
+    // conflicting sibling can never be hidden behind a bounded `.take(N)` scan.
+    // Zero rows → may create. A row with the same onboardingId → idempotent
+    // replay. A row with a different onboardingId → CONFLICT (never create
+    // ambiguous routing authority).
+    const binding = await ctx.db
       .query('productOnboardings')
-      .withIndex('by_productId_tenantId', (q) =>
-        q.eq('productId', args.productId).eq('tenantId', args.tenantId),
+      .withIndex('by_productId_tenantId_environment', (q) =>
+        q
+          .eq('productId', args.productId)
+          .eq('tenantId', args.tenantId)
+          .eq('environment', args.environment),
       )
-      .take(10);
-    const conflict = siblings.find((row) => row.environment === args.environment);
-    if (conflict) {
+      .take(1);
+    const bound = binding[0];
+    if (bound) {
+      if (bound.onboardingId === onboardingId) return bound.onboardingId;
       fail(
         'CONFLICT',
         'A product onboarding already binds this product, tenant, and environment.',
-        { onboardingId: conflict.onboardingId },
+        { onboardingId: bound.onboardingId },
       );
     }
     const now = Date.now();
@@ -184,6 +205,12 @@ export const advanceState = internalMutation({
   args: { onboardingId: v.string(), to: onboardingStateValidator },
   returns: v.string(),
   handler: async (ctx, args) => {
+    // Lifecycle progression is a privileged control-plane action. Require HUMAN
+    // administrator authority AND authorization for the onboarding's
+    // environment. A service identity (the product's own routing identity) can
+    // never advance its own onboarding toward ACTIVE.
+    const authz = await requireAuthorizationContext(ctx);
+    requireAdminAuthority(authz);
     const record = await ctx.db
       .query('productOnboardings')
       .withIndex('by_onboardingId', (q) => q.eq('onboardingId', args.onboardingId))
@@ -191,6 +218,7 @@ export const advanceState = internalMutation({
     if (!record) {
       fail('NOT_FOUND', 'Product onboarding not found.', { onboardingId: args.onboardingId });
     }
+    requireEnvironment(authz, record.environment);
     if (isTerminal(record.state)) {
       fail('CONFLICT', 'Product onboarding is in a terminal state.', { state: record.state });
     }
@@ -222,6 +250,11 @@ export const setLifecycleState = internalMutation({
   },
   returns: v.string(),
   handler: async (ctx, args) => {
+    // Suspension/revocation is a privileged control-plane action. Require HUMAN
+    // administrator authority AND authorization for the onboarding's
+    // environment.
+    const authz = await requireAuthorizationContext(ctx);
+    requireAdminAuthority(authz);
     const record = await ctx.db
       .query('productOnboardings')
       .withIndex('by_onboardingId', (q) => q.eq('onboardingId', args.onboardingId))
@@ -229,6 +262,7 @@ export const setLifecycleState = internalMutation({
     if (!record) {
       fail('NOT_FOUND', 'Product onboarding not found.', { onboardingId: args.onboardingId });
     }
+    requireEnvironment(authz, record.environment);
     if (isTerminal(record.state)) {
       fail('CONFLICT', 'Product onboarding is already terminal.', { state: record.state });
     }
@@ -242,22 +276,73 @@ export const setLifecycleState = internalMutation({
   },
 });
 
-/** Read a single onboarding by its product + tenant binding. */
+/**
+ * Read a single onboarding by its EXACT (product, tenant, environment) binding.
+ * This is the authoritative read contract: the binding IS the routing authority
+ * key, so the read is unambiguous even when a tenant holds DEVELOPMENT, PREVIEW,
+ * and PRODUCTION onboardings. It fails closed (CONFLICT) if more than one row
+ * claims the exact binding rather than arbitrarily returning one.
+ *
+ * Scope is enforced on the onboarding's Hub routing identity (the service
+ * identity the product calls as), never on the product id. The product id is not
+ * a service identity and must not be used as an authorization key.
+ */
+export const getByProductTenantEnvironment = internalQuery({
+  args: { productId: v.string(), tenantId: v.string(), environment: v.string() },
+  returns: v.union(productOnboardingDoc, v.null()),
+  handler: async (ctx, args) => {
+    const authz = await requireAuthorizationContext(ctx);
+    const rows = await ctx.db
+      .query('productOnboardings')
+      .withIndex('by_productId_tenantId_environment', (q) =>
+        q
+          .eq('productId', args.productId)
+          .eq('tenantId', args.tenantId)
+          .eq('environment', args.environment),
+      )
+      .take(2);
+    if (rows.length === 0) return null;
+    if (rows.length > 1) {
+      fail('CONFLICT', 'More than one onboarding claims this exact binding.', {
+        productId: args.productId,
+        tenantId: args.tenantId,
+        environment: args.environment,
+      });
+    }
+    const record = rows[0]!;
+    requireServiceScope(authz, record.hubRoutingIdentity);
+    return record;
+  },
+});
+
+/**
+ * @deprecated Ambiguous by design. A tenant may hold DEVELOPMENT, PREVIEW, and
+ * PRODUCTION onboardings, so (product, tenant) does not identify a single
+ * binding. Retained only for backward compatibility; it NEVER arbitrarily
+ * returns a row. It returns null when nothing matches, the single match when
+ * exactly one exists, and fails closed (CONFLICT) when the binding is ambiguous.
+ * New callers MUST use `getByProductTenantEnvironment`.
+ */
 export const getByProductTenant = internalQuery({
   args: { productId: v.string(), tenantId: v.string() },
   returns: v.union(productOnboardingDoc, v.null()),
   handler: async (ctx, args) => {
     const authz = await requireAuthorizationContext(ctx);
-    const record = await ctx.db
+    const rows = await ctx.db
       .query('productOnboardings')
       .withIndex('by_productId_tenantId', (q) =>
         q.eq('productId', args.productId).eq('tenantId', args.tenantId),
       )
-      .first();
-    if (record === null) return null;
-    // Scope on the onboarding's Hub routing identity (the service identity the
-    // product calls as), never on the product id. The product id is not a
-    // service identity and must not be used as an authorization key.
+      .take(2);
+    if (rows.length === 0) return null;
+    if (rows.length > 1) {
+      fail(
+        'CONFLICT',
+        'Ambiguous read: more than one onboarding matches this product and tenant. Use getByProductTenantEnvironment.',
+        { productId: args.productId, tenantId: args.tenantId },
+      );
+    }
+    const record = rows[0]!;
     requireServiceScope(authz, record.hubRoutingIdentity);
     return record;
   },
@@ -315,27 +400,39 @@ export const route = internalQuery({
     v.object({
       allowed: v.literal(false),
       code: v.string(),
+      // How the durable worker must treat the denial (never blanket TERMINAL).
+      disposition: v.string(),
     }),
   ),
   handler: async (ctx, args) => {
     const authz = await requireAuthorizationContext(ctx);
     requireServiceScope(authz, args.hubRoutingIdentity);
+    // Exact binding lookup on the composite index. 0 rows → no onboarding for
+    // this exact binding; 1 row → the routing authority; >1 rows → conflicting
+    // authority (fail closed). Never `.first()`, never a bounded `.take(N)`
+    // scan whose limit could hide a conflicting sibling. The environment is part
+    // of the binding key, so a missing exact binding is reported by the pure
+    // decision as PRODUCT_DENIED (the product is not onboarded for that
+    // environment) — no silent environment escalation is possible.
     const rows = await ctx.db
       .query('productOnboardings')
-      .withIndex('by_productId_tenantId', (q) =>
-        q.eq('productId', args.productId).eq('tenantId', args.tenantId),
+      .withIndex('by_productId_tenantId_environment', (q) =>
+        q
+          .eq('productId', args.productId)
+          .eq('tenantId', args.tenantId)
+          .eq('environment', args.environment),
       )
-      .take(10);
-    // Conflicting authorization: more than one onboarding claims the same
-    // (product, tenant, environment) binding. Fail closed rather than pick one.
-    const matching = rows.filter((row) => row.environment === args.environment);
-    if (matching.length > 1) {
-      return { allowed: false as const, code: 'CONFLICT' as const };
+      .take(2);
+    // Conflicting authorization: more than one onboarding claims the same exact
+    // binding. Fail closed rather than pick one.
+    if (rows.length > 1) {
+      return {
+        allowed: false as const,
+        code: 'CONFLICT' as const,
+        disposition: 'TERMINAL' as const,
+      };
     }
-    // When no row matches the requested environment, fall back to the first row
-    // so the pure decision reports ENVIRONMENT_DENIED (no silent environment
-    // escalation); a genuinely absent onboarding reports PRODUCT_DENIED.
-    const record = matching[0] ?? rows[0] ?? null;
+    const record = rows[0] ?? null;
     const onboarding: ProductOnboardingRecord | null = record
       ? {
           productId: record.productId,
@@ -370,7 +467,11 @@ export const route = internalQuery({
     if (decision.allowed) {
       return { allowed: true as const, route: decision.route };
     }
-    return { allowed: false as const, code: decision.code };
+    return {
+      allowed: false as const,
+      code: decision.code,
+      disposition: decision.disposition,
+    };
   },
 });
 

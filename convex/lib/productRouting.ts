@@ -191,15 +191,50 @@ export interface RoutingAllowance {
   };
 }
 
+/**
+ * The disposition a routing denial carries for the durable worker. It maps the
+ * Hub's bounded denial vocabulary onto the worker's retry/hold vocabulary so a
+ * denial is NEVER blanket-classified as terminal:
+ *
+ *   * TERMINAL        — permanently invalid authority. A new onboarding or a
+ *                       credential re-submission is required: REVOKED/REJECTED,
+ *                       product/tenant/environment impersonation, forged
+ *                       history, unsupported version, disallowed operation or
+ *                       scope, malformed/forged input.
+ *   * HELD            — the integration is not currently consumable but may
+ *                       become consumable WITHOUT a new onboarding (SUSPENDED,
+ *                       or not-yet-ACTIVE). Work is held, never discarded, and
+ *                       does not consume the retry budget.
+ *   * CLEAN_RETRYABLE — the failure happened before any side effect; safe to
+ *                       retry automatically. Produced by the transport layer,
+ *                       never by a routing denial.
+ *   * AMBIGUOUS       — a remote side may have accepted; never blindly retried.
+ *                       Produced by the transport layer.
+ */
+export type RoutingDisposition = 'TERMINAL' | 'HELD' | 'CLEAN_RETRYABLE' | 'AMBIGUOUS';
+
 export interface RoutingDenial {
   readonly allowed: false;
   readonly code: RoutingDenialCode;
+  /** How the durable worker must treat this denial (never blanket TERMINAL). */
+  readonly disposition: RoutingDisposition;
 }
 
 export type RoutingDecision = RoutingAllowance | RoutingDenial;
 
-function deny(code: RoutingDenialCode): RoutingDenial {
-  return { allowed: false, code };
+function deny(code: RoutingDenialCode, disposition: RoutingDisposition): RoutingDenial {
+  return { allowed: false, code, disposition };
+}
+
+/**
+ * The disposition for an `INTEGRATION_INACTIVE` denial, derived from the
+ * durable onboarding state. A SUSPENDED integration may be reactivated without a
+ * new onboarding (HELD); a not-yet-ACTIVE integration may still become ACTIVE
+ * (HELD); REVOKED/REJECTED are terminal.
+ */
+function inactiveDisposition(state: string): RoutingDisposition {
+  if (state === 'REVOKED' || state === 'REJECTED') return 'TERMINAL';
+  return 'HELD';
 }
 
 /**
@@ -223,16 +258,18 @@ export function decideRouting(
   //    non-finite `now` would make the credential-expiry comparison
   //    (`expiresAt <= now`) evaluate false and silently admit an expired
   //    credential, so it fails closed before any other check.
-  if (typeof now !== 'number' || !Number.isFinite(now)) return deny('VALIDATION_FAILED');
+  if (typeof now !== 'number' || !Number.isFinite(now)) {
+    return deny('VALIDATION_FAILED', 'TERMINAL');
+  }
 
   // 1. Onboarding must exist.
-  if (!onboarding) return deny('PRODUCT_DENIED');
+  if (!onboarding) return deny('PRODUCT_DENIED', 'TERMINAL');
 
   // 1. Product binding — a product may not impersonate another product.
-  if (request.productId !== onboarding.productId) return deny('PRODUCT_DENIED');
+  if (request.productId !== onboarding.productId) return deny('PRODUCT_DENIED', 'TERMINAL');
 
   // 2. Tenant binding — a product may not act for another tenant.
-  if (request.tenantId !== onboarding.tenantId) return deny('TENANT_DENIED');
+  if (request.tenantId !== onboarding.tenantId) return deny('TENANT_DENIED', 'TERMINAL');
 
   // 3. Environment — no escalation (a DEVELOPMENT onboarding cannot invoke
   //    PRODUCTION authorization).
@@ -240,15 +277,20 @@ export function decideRouting(
     !ROUTING_ENVIRONMENTS.includes(request.environment) ||
     request.environment !== onboarding.environment
   ) {
-    return deny('ENVIRONMENT_DENIED');
+    return deny('ENVIRONMENT_DENIED', 'TERMINAL');
   }
 
-  // 4. Onboarding must be ACTIVE. A SUSPENDED/REVOKED integration fails closed.
-  if (!isConsumable(onboarding.state)) return deny('INTEGRATION_INACTIVE');
+  // 4. Onboarding must be ACTIVE. A SUSPENDED integration is HELD (reactivation
+  //    is allowed without a new onboarding); a REVOKED/REJECTED integration is
+  //    TERMINAL. A not-yet-ACTIVE integration is HELD (it may still activate).
+  if (!isConsumable(onboarding.state)) {
+    return deny('INTEGRATION_INACTIVE', inactiveDisposition(onboarding.state));
+  }
 
-  // 5. History must legally support the claimed ACTIVE (anti-forgery).
+  // 5. History must legally support the claimed ACTIVE (anti-forgery). A forged
+  //    history is malformed/forged authorization: TERMINAL.
   if (!verifyTransitionHistory(onboarding.history, onboarding.state)) {
-    return deny('INTEGRATION_INACTIVE');
+    return deny('INTEGRATION_INACTIVE', 'TERMINAL');
   }
 
   // 6. Credential reference present + unexpired. The Hub resolves the secret on
@@ -257,10 +299,24 @@ export function decideRouting(
     typeof onboarding.credentialReference !== 'string' ||
     onboarding.credentialReference.trim().length === 0
   ) {
-    return deny('AUTHENTICATION_FAILED');
+    return deny('AUTHENTICATION_FAILED', 'TERMINAL');
   }
-  if (typeof onboarding.credentialExpiresAt === 'number' && onboarding.credentialExpiresAt <= now) {
-    return deny('AUTHENTICATION_FAILED');
+  // The stored credential-expiry clock is an authority-bearing numeric field. A
+  // hostile/corrupted durable record could carry a non-finite value (NaN,
+  // +Infinity, -Infinity) or a non-number; any of those would make the
+  // `expiresAt <= now` comparison evaluate false and silently admit an expired
+  // credential. Fail closed unless it is absent or a finite number. An invalid
+  // credential requires re-submission or a new onboarding: TERMINAL.
+  if (onboarding.credentialExpiresAt !== undefined) {
+    if (
+      typeof onboarding.credentialExpiresAt !== 'number' ||
+      !Number.isFinite(onboarding.credentialExpiresAt)
+    ) {
+      return deny('AUTHENTICATION_FAILED', 'TERMINAL');
+    }
+    if (onboarding.credentialExpiresAt <= now) {
+      return deny('AUTHENTICATION_FAILED', 'TERMINAL');
+    }
   }
 
   // 7. Contract version — exact match, no silent downgrade.
@@ -268,27 +324,27 @@ export function decideRouting(
     !SUPPORTED_CONTRACT_VERSIONS.includes(request.contractVersion) ||
     request.contractVersion !== onboarding.contractVersion
   ) {
-    return deny('UNSUPPORTED_VERSION');
+    return deny('UNSUPPORTED_VERSION', 'TERMINAL');
   }
 
   // 8. Wire API version — must be supported.
   if (!SUPPORTED_WIRE_API_VERSIONS.includes(request.apiVersion)) {
-    return deny('UNSUPPORTED_VERSION');
+    return deny('UNSUPPORTED_VERSION', 'TERMINAL');
   }
 
   // 9. Operation — must be an allowed operation of this onboarding.
   if (!onboarding.allowedOperations.includes(request.operation)) {
-    return deny('UNKNOWN_OPERATION');
+    return deny('UNKNOWN_OPERATION', 'TERMINAL');
   }
 
   // 10. Scope — must be an allowed scope of this onboarding.
   if (!onboarding.allowedScopes.includes(request.scope)) {
-    return deny('SCOPE_DENIED');
+    return deny('SCOPE_DENIED', 'TERMINAL');
   }
 
   // 11. Routing identity — the product must call as its bound routing identity.
   if (request.hubRoutingIdentity !== onboarding.hubRoutingIdentity) {
-    return deny('PRODUCT_DENIED');
+    return deny('PRODUCT_DENIED', 'TERMINAL');
   }
 
   return {

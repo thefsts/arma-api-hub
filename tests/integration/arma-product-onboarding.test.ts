@@ -68,7 +68,7 @@ async function seedRouter(t: TestConvex) {
   await seedAuthorization(t, {
     principalId: HUB_ROUTER,
     principalType: 'HUMAN',
-    roles: ['operator'],
+    roles: ['admin'],
     serviceIds: [ROUTING_IDENTITY],
     environments: [...ROUTING_ENVIRONMENTS],
   });
@@ -215,12 +215,12 @@ describe('ARMA System 360 -> Hub -> real Core boundary (governed path)', () => {
 describe('Hub routing gate — fail-closed negatives (pure decision)', () => {
   it('P1: a request for another tenant is denied (tenant isolation)', () => {
     const d = decideRouting(routeArgs({ tenantId: TENANT_B }), record(), CORE_NOW);
-    expect(d).toEqual({ allowed: false, code: 'TENANT_DENIED' });
+    expect(d).toMatchObject({ allowed: false, code: 'TENANT_DENIED' });
   });
 
   it('P2: a request claiming another product is denied (no impersonation)', () => {
     const d = decideRouting(routeArgs({ productId: 'other-fsts-product' }), record(), CORE_NOW);
-    expect(d).toEqual({ allowed: false, code: 'PRODUCT_DENIED' });
+    expect(d).toMatchObject({ allowed: false, code: 'PRODUCT_DENIED' });
   });
 
   it('P2b: a request claiming another routing identity is denied', () => {
@@ -229,27 +229,27 @@ describe('Hub routing gate — fail-closed negatives (pure decision)', () => {
       record(),
       CORE_NOW,
     );
-    expect(d).toEqual({ allowed: false, code: 'PRODUCT_DENIED' });
+    expect(d).toMatchObject({ allowed: false, code: 'PRODUCT_DENIED' });
   });
 
   it('P3: a DEVELOPMENT request against a PRODUCTION onboarding is denied', () => {
     const d = decideRouting(routeArgs({ environment: 'DEVELOPMENT' }), record(), CORE_NOW);
-    expect(d).toEqual({ allowed: false, code: 'ENVIRONMENT_DENIED' });
+    expect(d).toMatchObject({ allowed: false, code: 'ENVIRONMENT_DENIED' });
   });
 
   it('P3b: an unknown environment is denied', () => {
     const d = decideRouting(routeArgs({ environment: 'PROD' }), record(), CORE_NOW);
-    expect(d).toEqual({ allowed: false, code: 'ENVIRONMENT_DENIED' });
+    expect(d).toMatchObject({ allowed: false, code: 'ENVIRONMENT_DENIED' });
   });
 
   it('P4: a SUSPENDED onboarding fails closed', () => {
     const d = decideRouting(routeArgs(), record({ state: 'SUSPENDED' }), CORE_NOW);
-    expect(d).toEqual({ allowed: false, code: 'INTEGRATION_INACTIVE' });
+    expect(d).toMatchObject({ allowed: false, code: 'INTEGRATION_INACTIVE' });
   });
 
   it('P4b: a REVOKED onboarding fails closed', () => {
     const d = decideRouting(routeArgs(), record({ state: 'REVOKED' }), CORE_NOW);
-    expect(d).toEqual({ allowed: false, code: 'INTEGRATION_INACTIVE' });
+    expect(d).toMatchObject({ allowed: false, code: 'INTEGRATION_INACTIVE' });
   });
 
   it('P4c: a forged ACTIVE (illegal history) fails closed', () => {
@@ -258,42 +258,42 @@ describe('Hub routing gate — fail-closed negatives (pure decision)', () => {
       record({ state: 'ACTIVE', history: ['PROPOSED', 'ACTIVE'] }),
       CORE_NOW,
     );
-    expect(d).toEqual({ allowed: false, code: 'INTEGRATION_INACTIVE' });
+    expect(d).toMatchObject({ allowed: false, code: 'INTEGRATION_INACTIVE' });
   });
 
   it('P5: an expired credential reference fails closed', () => {
     const d = decideRouting(routeArgs(), record({ credentialExpiresAt: CORE_NOW - 1 }), CORE_NOW);
-    expect(d).toEqual({ allowed: false, code: 'AUTHENTICATION_FAILED' });
+    expect(d).toMatchObject({ allowed: false, code: 'AUTHENTICATION_FAILED' });
   });
 
   it('P5b: a blank credential reference fails closed', () => {
     const d = decideRouting(routeArgs(), record({ credentialReference: '   ' }), CORE_NOW);
-    expect(d).toEqual({ allowed: false, code: 'AUTHENTICATION_FAILED' });
+    expect(d).toMatchObject({ allowed: false, code: 'AUTHENTICATION_FAILED' });
   });
 
   it('an unsupported contract version fails closed (no silent downgrade)', () => {
     const d = decideRouting(routeArgs({ contractVersion: '2.0.0' }), record(), CORE_NOW);
-    expect(d).toEqual({ allowed: false, code: 'UNSUPPORTED_VERSION' });
+    expect(d).toMatchObject({ allowed: false, code: 'UNSUPPORTED_VERSION' });
   });
 
   it('an unsupported wire API version fails closed', () => {
     const d = decideRouting(routeArgs({ apiVersion: '9.9.9' }), record(), CORE_NOW);
-    expect(d).toEqual({ allowed: false, code: 'UNSUPPORTED_VERSION' });
+    expect(d).toMatchObject({ allowed: false, code: 'UNSUPPORTED_VERSION' });
   });
 
   it('an operation outside the onboarding allow-list is denied', () => {
     const d = decideRouting(routeArgs({ operation: 'compliance.verify' }), record(), CORE_NOW);
-    expect(d).toEqual({ allowed: false, code: 'UNKNOWN_OPERATION' });
+    expect(d).toMatchObject({ allowed: false, code: 'UNKNOWN_OPERATION' });
   });
 
   it('a scope outside the onboarding allow-list is denied', () => {
     const d = decideRouting(routeArgs({ scope: 'compliance.write' }), record(), CORE_NOW);
-    expect(d).toEqual({ allowed: false, code: 'SCOPE_DENIED' });
+    expect(d).toMatchObject({ allowed: false, code: 'SCOPE_DENIED' });
   });
 
   it('a missing onboarding is denied', () => {
     const d = decideRouting(routeArgs(), null, CORE_NOW);
-    expect(d).toEqual({ allowed: false, code: 'PRODUCT_DENIED' });
+    expect(d).toMatchObject({ allowed: false, code: 'PRODUCT_DENIED' });
   });
 
   it('every forbidden onboarding shortcut is unreachable', () => {
@@ -305,7 +305,7 @@ describe('Hub routing gate — fail-closed negatives (pure decision)', () => {
       );
       expect(d.allowed).toBe(false);
       // A non-ACTIVE claim is inactive; a forged ACTIVE claim is also inactive.
-      expect(d).toEqual({ allowed: false, code: 'INTEGRATION_INACTIVE' });
+      expect(d).toMatchObject({ allowed: false, code: 'INTEGRATION_INACTIVE' });
       void to;
     }
   });
@@ -344,7 +344,7 @@ describe('Hub routing gate — Convex layer', () => {
       state: 'SUSPENDED',
     });
     const decision = await router.query(internal.productOnboardings.route, routeArgs());
-    expect(decision).toEqual({ allowed: false, code: 'INTEGRATION_INACTIVE' });
+    expect(decision).toMatchObject({ allowed: false, code: 'INTEGRATION_INACTIVE' });
   });
 
   it('an illegal onboarding transition is rejected', async () => {
@@ -378,7 +378,7 @@ describe('Hub routing gate — Convex layer', () => {
       });
     });
     const decision = await router.query(internal.productOnboardings.route, routeArgs());
-    expect(decision).toEqual({ allowed: false, code: 'INTEGRATION_INACTIVE' });
+    expect(decision).toMatchObject({ allowed: false, code: 'INTEGRATION_INACTIVE' });
   });
 
   it('an expired credential denies at the Convex routing gate', async () => {
@@ -387,7 +387,7 @@ describe('Hub routing gate — Convex layer', () => {
     const onboardingId = await registerArma(router, { credentialExpiresAt: CORE_NOW - 1 });
     await activate(router, onboardingId);
     const decision = await router.query(internal.productOnboardings.route, routeArgs());
-    expect(decision).toEqual({ allowed: false, code: 'AUTHENTICATION_FAILED' });
+    expect(decision).toMatchObject({ allowed: false, code: 'AUTHENTICATION_FAILED' });
   });
 });
 

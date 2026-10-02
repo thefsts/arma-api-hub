@@ -33,16 +33,21 @@ const CRED_REF = 'key-patches-0001';
 const CONTRACT_VERSION = '1.0.0';
 const API_VERSION = '1.1.0';
 
-async function seedOperator(serviceIds: string[]) {
+/**
+ * Seed an ADMIN principal authorized for the given service ids and the target
+ * environment. Onboarding administration (register/advance/lifecycle) requires
+ * the admin role; reads additionally require service scope.
+ */
+async function seedAdmin(serviceIds: string[]) {
   const t = setup();
   await seedAuthorization(t, {
-    principalId: 'operator-1',
+    principalId: 'admin-1',
     principalType: 'HUMAN',
-    roles: ['operator'],
+    roles: ['admin'],
     serviceIds,
     environments: [ENV],
   });
-  return { t, op: t.withIdentity(identity('operator-1')) };
+  return { t, op: t.withIdentity(identity('admin-1')) };
 }
 
 function registerArgs(over: Record<string, unknown> = {}) {
@@ -64,7 +69,7 @@ function registerArgs(over: Record<string, unknown> = {}) {
 // ===========================================================================
 describe('D1 — read scope keys on the Hub routing identity', () => {
   it('an operator authorized for the owning service can read the onboarding', async () => {
-    const { op } = await seedOperator([SERVICE]);
+    const { op } = await seedAdmin([SERVICE]);
     await op.mutation(internal.productOnboardings.register, registerArgs());
     const record = await op.query(internal.productOnboardings.getByProductTenant, {
       productId: PRODUCT,
@@ -76,10 +81,21 @@ describe('D1 — read scope keys on the Hub routing identity', () => {
   });
 
   it('an operator authorized for a DIFFERENT service cannot read it', async () => {
-    const { op } = await seedOperator([OTHER_SERVICE]);
-    await op.mutation(internal.productOnboardings.register, registerArgs());
+    // The owning admin (scoped for SERVICE) registers the onboarding. A separate
+    // principal scoped only for OTHER_SERVICE must not be able to read it, even
+    // though it holds the `operator` role. Scope keys on the routing identity.
+    const { t, op: admin } = await seedAdmin([SERVICE]);
+    await admin.mutation(internal.productOnboardings.register, registerArgs());
+    await seedAuthorization(t, {
+      principalId: 'operator-other',
+      principalType: 'HUMAN',
+      roles: ['operator'],
+      serviceIds: [OTHER_SERVICE],
+      environments: [ENV],
+    });
+    const other = t.withIdentity(identity('operator-other'));
     await expect(
-      op.query(internal.productOnboardings.getByProductTenant, {
+      other.query(internal.productOnboardings.getByProductTenant, {
         productId: PRODUCT,
         tenantId: TENANT,
       }),
@@ -87,9 +103,19 @@ describe('D1 — read scope keys on the Hub routing identity', () => {
   });
 
   it('listByProduct returns only onboardings the caller is scoped for', async () => {
-    const { op } = await seedOperator([OTHER_SERVICE]);
-    await op.mutation(internal.productOnboardings.register, registerArgs());
-    const rows = await op.query(internal.productOnboardings.listByProduct, { productId: PRODUCT });
+    const { t, op: admin } = await seedAdmin([SERVICE]);
+    await admin.mutation(internal.productOnboardings.register, registerArgs());
+    await seedAuthorization(t, {
+      principalId: 'operator-other',
+      principalType: 'HUMAN',
+      roles: ['operator'],
+      serviceIds: [OTHER_SERVICE],
+      environments: [ENV],
+    });
+    const other = t.withIdentity(identity('operator-other'));
+    const rows = await other.query(internal.productOnboardings.listByProduct, {
+      productId: PRODUCT,
+    });
     expect(rows).toEqual([]);
   });
 });
@@ -99,7 +125,7 @@ describe('D1 — read scope keys on the Hub routing identity', () => {
 // ===========================================================================
 describe('D2 — register is idempotent by onboardingId', () => {
   it('an identical replay returns the same id without error', async () => {
-    const { op } = await seedOperator([SERVICE]);
+    const { op } = await seedAdmin([SERVICE]);
     const args = registerArgs({ onboardingId: 'onb-fixed' });
     const first = await op.mutation(internal.productOnboardings.register, args);
     const second = await op.mutation(internal.productOnboardings.register, args);
@@ -108,7 +134,7 @@ describe('D2 — register is idempotent by onboardingId', () => {
   });
 
   it('a different payload under the same id is a conflict', async () => {
-    const { op } = await seedOperator([SERVICE]);
+    const { op } = await seedAdmin([SERVICE]);
     await op.mutation(
       internal.productOnboardings.register,
       registerArgs({ onboardingId: 'onb-fixed' }),
@@ -154,14 +180,14 @@ describe('D3 — a non-finite evaluation clock fails closed', () => {
   };
 
   it('NaN now denies (would otherwise skip the expiry comparison)', () => {
-    expect(decideRouting(request, record(), Number.NaN)).toEqual({
+    expect(decideRouting(request, record(), Number.NaN)).toMatchObject({
       allowed: false,
       code: 'VALIDATION_FAILED',
     });
   });
 
   it('Infinity now denies', () => {
-    expect(decideRouting(request, record(), Number.POSITIVE_INFINITY)).toEqual({
+    expect(decideRouting(request, record(), Number.POSITIVE_INFINITY)).toMatchObject({
       allowed: false,
       code: 'VALIDATION_FAILED',
     });
@@ -177,7 +203,7 @@ describe('D3 — a non-finite evaluation clock fails closed', () => {
 // ===========================================================================
 describe('D4 — conflicting authorization fails closed', () => {
   it('register refuses a second onboarding for the same product/tenant/environment', async () => {
-    const { op } = await seedOperator([SERVICE]);
+    const { op } = await seedAdmin([SERVICE]);
     await op.mutation(internal.productOnboardings.register, registerArgs());
     await expect(
       op.mutation(
@@ -188,7 +214,7 @@ describe('D4 — conflicting authorization fails closed', () => {
   });
 
   it('route fails closed when two rows claim the same binding', async () => {
-    const { t, op } = await seedOperator([SERVICE]);
+    const { t, op } = await seedAdmin([SERVICE]);
     await t.run(async (ctx) => {
       for (const onboardingId of ['onb-a', 'onb-b']) {
         await ctx.db.insert('productOnboardings', {
@@ -219,7 +245,7 @@ describe('D4 — conflicting authorization fails closed', () => {
       apiVersion: API_VERSION,
       now: NOW,
     });
-    expect(decision).toEqual({ allowed: false, code: 'CONFLICT' });
+    expect(decision).toMatchObject({ allowed: false, code: 'CONFLICT' });
   });
 });
 
@@ -253,7 +279,7 @@ describe('D5 — registration descriptors do not grant access or activate a prod
   });
 
   it('does not create an onboarding and cannot route (registration != activation)', async () => {
-    const { op } = await seedOperator([descriptor.serviceId as string]);
+    const { op } = await seedAdmin([descriptor.serviceId as string]);
     // No onboarding exists for the descriptor's product.
     const record = await op.query(internal.productOnboardings.getByProductTenant, {
       productId: descriptor.productId as string,
@@ -272,6 +298,6 @@ describe('D5 — registration descriptors do not grant access or activate a prod
       apiVersion: API_VERSION,
       now: NOW,
     });
-    expect(decision).toEqual({ allowed: false, code: 'PRODUCT_DENIED' });
+    expect(decision).toMatchObject({ allowed: false, code: 'PRODUCT_DENIED' });
   });
 });

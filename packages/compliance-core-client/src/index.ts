@@ -779,7 +779,18 @@ export function assertNoDirectCoreDatabaseAccess(sourceText: string): void {
 // ---------------------------------------------------------------------------
 export type TransportResult =
   | { readonly ok: true; readonly body: string; readonly correlationId: string }
-  | { readonly ok: false; readonly error: ApiError; readonly retryable: boolean };
+  | {
+      readonly ok: false;
+      readonly error: ApiError;
+      readonly retryable: boolean;
+      /**
+       * True when the transport cannot prove whether the remote side accepted
+       * the request (e.g. a timeout after the request was sent). Such an outcome
+       * must NEVER be blindly retried; the durable worker quarantines it for
+       * reconciliation so an accepted side effect is never duplicated.
+       */
+      readonly ambiguous?: boolean;
+    };
 
 export interface TransportHealth {
   readonly status: 'AVAILABLE' | 'DEGRADED' | 'UNAVAILABLE';
@@ -787,9 +798,29 @@ export interface TransportHealth {
   readonly contractVersion: string | null;
 }
 
+/**
+ * A resolved credential reference. The Hub stores only a REFERENCE on the
+ * onboarding; the transport resolves it to signing material Hub-side. The secret
+ * never leaves the worker.
+ */
+export interface ResolvedCredential {
+  readonly keyId: string;
+  readonly algorithm: string;
+  readonly secret: string;
+}
+
 export interface ComplianceCoreTransport {
-  /** Forward a signed governed request; return a bounded response or bounded failure. */
-  forward(signed: GovernedRequest, governedBody: string): Promise<TransportResult>;
+  /**
+   * Forward a signed governed request; return a bounded response or bounded
+   * failure. The resolved credential (when supplied) authenticates the Hub→Core
+   * hop; it is resolved from the route's credential reference, never from the
+   * caller.
+   */
+  forward(
+    signed: GovernedRequest,
+    governedBody: string,
+    credential?: ResolvedCredential,
+  ): Promise<TransportResult>;
   /** Connector health for the Compliance Core connection. */
   health(): Promise<TransportHealth>;
 }
@@ -831,9 +862,20 @@ export interface RoutingGateRequest {
   readonly apiVersion: string;
 }
 
+/**
+ * The disposition a denial carries for the durable worker. Mirrors the Hub's
+ * routing disposition vocabulary so a denial is never blanket-classified as
+ * terminal. Optional for backward compatibility; absent means TERMINAL.
+ */
+export type RoutingDisposition = 'TERMINAL' | 'HELD' | 'CLEAN_RETRYABLE' | 'AMBIGUOUS';
+
 export type RoutingDecision =
   | { readonly allowed: true; readonly route: RoutingRoute }
-  | { readonly allowed: false; readonly code: string };
+  | {
+      readonly allowed: false;
+      readonly code: string;
+      readonly disposition?: RoutingDisposition;
+    };
 
 /**
  * The server-derived routing gate. In production this is the Hub's Convex
@@ -858,7 +900,12 @@ export type GovernedDispatchResult =
       readonly transport: TransportResult;
       readonly correlationId: string;
     }
-  | { readonly dispatched: false; readonly code: string };
+  | {
+      readonly dispatched: false;
+      readonly code: string;
+      /** How the durable worker must treat the refusal (never blanket TERMINAL). */
+      readonly disposition?: RoutingDisposition;
+    };
 
 export interface GovernedDispatcher {
   dispatch(input: GovernedDispatchInput): Promise<GovernedDispatchResult>;
@@ -875,6 +922,13 @@ export interface GovernedDispatcher {
 export function createGovernedDispatcher(deps: {
   readonly gate: RoutingGate;
   readonly transport: ComplianceCoreTransport;
+  /**
+   * Credential/reference resolution. The route carries only a credential
+   * REFERENCE; this resolves it to signing material Hub-side. When supplied, an
+   * unresolvable reference fails closed before the transport is touched. The
+   * secret never leaves the worker.
+   */
+  readonly resolveCredential?: (reference: string) => Promise<ResolvedCredential>;
 }): GovernedDispatcher {
   return {
     async dispatch(input: GovernedDispatchInput): Promise<GovernedDispatchResult> {
@@ -882,27 +936,64 @@ export function createGovernedDispatcher(deps: {
       try {
         decision = await deps.gate(input.request);
       } catch {
-        // A gate that cannot produce a decision fails closed: never forward.
-        return { dispatched: false, code: 'ROUTING_GATE_ERROR' };
+        // A gate that cannot produce a decision fails closed: never forward. A
+        // gate failure is a temporary governance/infrastructure condition (an
+        // operator can fix configuration and resume), so the durable worker
+        // HOLDS the work rather than discarding it.
+        return { dispatched: false, code: 'ROUTING_GATE_ERROR', disposition: 'HELD' };
       }
       if (!decision.allowed) {
-        // Fail closed: the transport is never touched on a denial.
-        return { dispatched: false, code: decision.code };
+        // Fail closed: the transport is never touched on a denial. Carry the
+        // routing authority's disposition through so the worker never
+        // blanket-classifies a denial as terminal.
+        return {
+          dispatched: false,
+          code: decision.code,
+          ...(decision.disposition !== undefined ? { disposition: decision.disposition } : {}),
+        };
       }
       // Defense in depth: the resolved route must match the signed envelope on
-      // every authority-bearing isolation dimension. A gate that allowed a
-      // different product/tenant/environment than the envelope carries is a
-      // mismatch and fails closed.
+      // EVERY authority-bearing field. The forwarded value must be tied to the
+      // trusted routing authority, never to two independently caller-supplied
+      // values. Any disagreement fails closed before the transport is touched.
+      //
+      //   route.productId          == signed.productId
+      //   route.tenantId           == signed.tenantId
+      //   route.environment        == signed.environment
+      //   route.hubRoutingIdentity == signed.serviceIdentityId
+      //   route.apiVersion         == signed.apiVersion
+      //   route.operation          == signed.action
+      //
+      // `route.scope` and `route.contractVersion` are routing-authority concepts
+      // with no signed-envelope counterpart: they are resolved from the durable
+      // onboarding registry (SERVER AUTHORITY / DURABLE RECORD) and are not
+      // carried on the wire, so there is nothing to bind them to. The signed
+      // envelope's `resourceType`/`resourceId` identify the Core resource and are
+      // not routing-authority fields; the route does not carry them.
       const route = decision.route;
       const signed = input.signed;
       if (
         route.productId !== signed.productId ||
         route.tenantId !== signed.tenantId ||
-        route.environment !== signed.environment
+        route.environment !== signed.environment ||
+        route.hubRoutingIdentity !== signed.serviceIdentityId ||
+        route.apiVersion !== signed.apiVersion ||
+        route.operation !== signed.action
       ) {
-        return { dispatched: false, code: 'ROUTE_ENVELOPE_MISMATCH' };
+        return { dispatched: false, code: 'ROUTE_ENVELOPE_MISMATCH', disposition: 'TERMINAL' };
       }
-      const transport = await deps.transport.forward(signed, input.governedBody);
+      // Credential/reference resolution: resolve the route's credential
+      // reference to signing material Hub-side. A reference that cannot be
+      // resolved fails closed before any transport call.
+      let credential: ResolvedCredential | undefined;
+      if (deps.resolveCredential) {
+        try {
+          credential = await deps.resolveCredential(route.credentialReference);
+        } catch {
+          return { dispatched: false, code: 'CREDENTIAL_UNRESOLVED', disposition: 'TERMINAL' };
+        }
+      }
+      const transport = await deps.transport.forward(signed, input.governedBody, credential);
       return { dispatched: true, transport, correlationId: signed.correlationId };
     },
   };

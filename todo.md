@@ -1,47 +1,72 @@
-# ARMA API HUB — Phase 8 Integration Review and Hardening
+# ARMA API HUB — Phase 8 PM HOLD Corrections
 
-## 1. Establish baseline
-- [x] Fetch main + PR branches; record SHAs (main 356d00b, PR3 98ca214, PR4 d240470)
-- [x] Read repo instructions, ADRs, boundaries, cost boundaries, Compliance Core handoff
-- [x] Create isolated branch phase8/api-hub-integration-review (from origin/main 356d00b)
+## 0. Baseline (fetched)
+- [x] main 356d00b (unchanged); PR#6 head 545106f (mine); PR#3 98ca214 OPEN; PR#4 d240470 OPEN
+- [x] PR#6 OPEN/DRAFT/MERGEABLE/CLEAN; CI 36615852812 SUCCESS; 7 ahead / 0 behind main
+- [x] New branch phase8/chat5-hub-convergence = parallel integration (no hardening); DO NOT TOUCH
 
-## 2. Integrate and review existing work
-- [x] Merge PR #3 (onboarding + routing) into integration branch
-- [x] Merge PR #4 (PATCHES/Law Shield descriptors) into integration branch
-- [x] Review combined implementation; baseline 214 tests pass, 127 internal functions
-- [x] Confirmed defects:
-      D1 scope-key mismatch: getByProductTenant/listByProduct scope on productId not routing identity
-      D2 register not idempotent despite PR claim (CONFLICT on identical replay)
-      D3 decideRouting fail-open on non-finite `now` (expiry bypass)
-      D4 conflicting authorization: no uniqueness on (product,tenant,env); route uses .first()
-      D5 dispatch-path gap: routing gate not wired into any transport path
-- [x] Fix confirmed defects D1-D4 (productOnboardings.ts, productRouting.ts)
-- [x] Add governed dispatch boundary (D5) + wire into worker; prove no bypass
-      (compliance-core-client createGovernedDispatcher, worker governedDispatch.ts, 14 tests)
-- [x] Regression suite for D1-D5 (onboarding-hardening.test.ts, 13 tests pass)
-- [x] Trace service API + worker dispatch paths; document no-bypass proof
-      (transport.forward has exactly 1 caller = createGovernedDispatcher; only reachable via createGovernedJobHandler; API app /v1/validate does NOT route/dispatch)
+## 6. Exact product/tenant/environment uniqueness (schema first — dependency)
+- [x] Add composite index (productId+tenantId+environment) to schema
+- [x] register: exact binding query; 0->create, identical replay->existing id, conflict->CONFLICT
+- [x] route: distinguish 0/1/>1 via exact index; >1->CONFLICT; no .first(); no .take(10) uniqueness
+- [x] Hostile test with >10 sibling records (onboarding-sibling-ambiguity.test.ts, 12 siblings)
 
-## 3. Preserve platform ownership
-- [x] Confirm no direct Core DB access / no duplicated policy engine
-      (no _generated/ConvexHttpClient/from convex in apps+packages; @arma/policy is Hub admission control, not compliance adjudication)
-- [x] Confirm cost boundary preserved (API Hub / AI Hub / REGIVANTA)
-      (COST_OWNERSHIP + cost.ts: API Hub authoritative for external vendor charges; AI Hub references; REGIVANTA owns margin/budget)
-- [x] Confirm shared correlation/cost-event IDs, no duplicate charges
-      (costEventEnvelopeSchema carries shared correlationId + costEventId; API Hub never emits profit/margin/company-wide cost)
+## 5. Harden hostile durable records
+- [x] Validate credentialExpiresAt finite (NaN/+/-Infinity fail closed) in decideRouting
+- [x] Audit other authority-bearing numeric/time fields
+- [x] Hostile durable-record tests (onboarding-hostile-records.test.ts, 17 tests)
 
-## 4. Validate combined result
-- [x] Run full validation pipeline (format:check, lint, typecheck, convex:guardrails, test, build, secret:scan, deps:check) -> EXIT=0
-- [x] Run focused integration/security tests (governed-dispatch 14, onboarding-hardening 13; full suite 22 files / 241 tests)
-- [x] Demonstrate authorized path reaches Core boundary; unauthorized rejected pre-dispatch
-      (authorized ACTIVE forwarded exactly once; all denials -> calls.length===0)
-- [x] Demonstrate suspension/revocation/replay/idempotency/outage fail safe
-- [x] Confirm transport success never fabricates compliance verdict
-      (dispatcher returns bounded TransportResult only; assertTransportDoesNotManufactureCoreState)
-- [x] Confirm Convex args/returns + internal-only model retained (127 internal / 0 public, all args+returns)
+## 7. Fix ambiguous read contract
+- [x] Add getByProductTenantEnvironment (exact binding); update callers/tests
+- [x] getByProductTenant must not arbitrarily .first(); fail closed on ambiguity
+- [x] Verify no remaining ambiguous callers (deprecated getByProductTenant has no production callers)
 
-## 5. Deliver for PM review
-- [x] Push integration branch (phase8/api-hub-integration-review)
-- [x] Open DRAFT PR #6 with baseline/SHAs, defects/fixes, validation, blockers, merge order
-- [x] Confirm no secrets/customer data committed (secret:scan clean; only .env.example tracked)
-- [x] Ensure green CI (run 36615404727 = SUCCESS)
+## 4. Harden onboarding administration authorization
+- [x] Require explicit trusted authority (global/admin) for register/advanceState/setLifecycleState
+- [x] Negative tests: cross-product/tenant/env, lifecycle mutations, scope/operation/routingIdentity tampering
+
+## 2. Complete route <-> signed envelope binding
+- [x] Bind ALL authority-bearing fields (productId/tenantId/environment/hubRoutingIdentity<->serviceIdentityId/apiVersion/operation<->action)
+- [x] Document scope/contractVersion/resourceType/resourceId mapping
+- [x] Hostile mismatch tests for EVERY bound field (route-envelope-binding.test.ts, 9 tests)
+
+## 3. Real trusted routing-gate adapter
+- [x] Adapter supplies trusted `now` (server clock); caller cannot supply expiry clock
+- [x] No new public Convex function; use existing internal boundary
+- [x] Source-of-truth matrix for all routing fields
+
+## 1. Real governed worker composition root
+- [x] Build DEVELOPMENT worker composition: queue->handler->gate adapter->clock->credential resolve->transport
+- [x] Exact execution trace reserved job->handler->routing decision->transport.forward
+- [x] Structural test: no ungoverned alternate path to Core dispatch (worker-composition.test.ts, 9 tests)
+
+## 8. Retry/hold/dead-letter semantics
+- [x] classifyRoutingDenial: TERMINAL vs HELD/DEFERRED vs CLEAN_RETRYABLE vs AMBIGUOUS
+- [x] HELD: no retry budget, keeps identity/ordering, resumable after release
+- [x] Ambiguous->reconciliation; temporary governance state not silently dead-lettered
+- [x] Extend Queue/processor with HELD state
+- [x] Disposition-mapping test suite (worker-hold-semantics.test.ts, 25 tests)
+
+## 9. Replay/idempotency/correlation/cost proof
+- [x] Prove preservation of requestId/correlationId/causationId/idempotencyKey/costEventId/identity/product/tenant/env
+- [x] Cost: no charge on denial; no dup on safe retry; no second charge on replay; ambiguous no blind charge
+- [x] Tests: replay/conflict/retry/ambiguous/held-resume/repeat/dup-delivery/cost-dedup (replay-idempotency-cost.test.ts, 9 tests)
+
+## 10. Prove no bypass
+- [x] Report every caller of forward/createGovernedDispatcher/createGovernedJobHandler/processJob/route (audit complete)
+
+## 11. Hostile authorization boundaries
+- [ ] Add/verify all negatives (tenant/service/product/env cross, credential, version, scope, forged history, dup binding, >10 siblings, route mismatch, lifecycle, missing/suspended/revoked, gate failure)
+
+## 12. Validation
+- [ ] pnpm validate at final head; report each stage + counts
+- [ ] Focused test groups (AUTHORIZATION/HOSTILE/BINDING/WORKER/HOLD/RETRY/AMBIGUOUS/IDEMPOTENCY/COST/CORRELATION)
+
+## 13. Evidence classification
+- [ ] Label every proof MOCKED / IN-PROCESS / CONFIGURED DEV RUNTIME / LIVE DEV E2E
+
+## 14. Push / PR rules
+- [ ] Push to phase8/api-hub-integration-review; keep PR#6 OPEN/DRAFT/UNMERGED; no merges/deploy
+
+## 15. Final report
+- [ ] Produce 21-point final report

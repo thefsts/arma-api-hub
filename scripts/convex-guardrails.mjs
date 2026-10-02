@@ -41,6 +41,7 @@ const PUBLIC_WRAPPERS = new Set(['query', 'mutation', 'action']);
 const AUTHZ_CALLS = new Set([
   'requireAuthorizationContext',
   'requireGlobal',
+  'requireAdminAuthority',
   'requireRole',
   'requireSystemScope',
   'requireServiceScope',

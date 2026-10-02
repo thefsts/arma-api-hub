@@ -13,10 +13,15 @@
 // durable server-side records and enforces the caller's service scope). The
 // handler never re-implements the decision.
 
-import type { ComplianceCoreTransport, RoutingGate } from '@arma/compliance-core-client';
+import type {
+  ComplianceCoreTransport,
+  ResolvedCredential,
+  RoutingGate,
+} from '@arma/compliance-core-client';
 import { createGovernedDispatcher } from '@arma/compliance-core-client';
 import type { Job } from './queue.js';
 import type { JobHandler, JobOutcome } from './processor.js';
+import type { FailureClass } from './retry.js';
 
 /** The payload a governed-dispatch job carries. */
 export interface GovernedDispatchJobPayload {
@@ -26,29 +31,50 @@ export interface GovernedDispatchJobPayload {
 }
 
 /**
- * Build the worker's governed dispatch handler. Routing denials are TERMINAL:
- * they are refused before dispatch and are never retried as transport failures.
- * A clean, retryable transport failure is retried; an ambiguous or terminal
- * transport failure is not (an accepted side effect must never be duplicated).
+ * Build the worker's governed dispatch handler. A routing refusal is a DECISION,
+ * not a transient transport failure: it is never forwarded and never retried as
+ * a transport failure. But a refusal is NOT blanket-classified as terminal — its
+ * disposition comes from the routing authority:
+ *
+ *   * TERMINAL        → dead-lettered (REVOKED/REJECTED, impersonation, forged
+ *                       history, unsupported version, disallowed op/scope).
+ *   * HELD            → held (SUSPENDED onboarding, not-yet-ACTIVE, temporary
+ *                       gate/dependency failure); no retry budget consumed.
+ *   * CLEAN_RETRYABLE → retried (transport failed before a side effect).
+ *   * AMBIGUOUS       → quarantined for reconciliation (remote may have
+ *                       accepted); never blindly retried.
+ *
+ * An accepted side effect must never be duplicated.
  */
 export function createGovernedJobHandler(deps: {
   readonly gate: RoutingGate;
   readonly transport: ComplianceCoreTransport;
+  readonly resolveCredential?: (reference: string) => Promise<ResolvedCredential>;
 }): JobHandler<GovernedDispatchJobPayload> {
   const dispatcher = createGovernedDispatcher(deps);
   return async (job: Job<GovernedDispatchJobPayload>): Promise<JobOutcome> => {
     const result = await dispatcher.dispatch(job.payload);
     if (!result.dispatched) {
       // The request was refused by the routing gate before any transport call.
-      // A denial is a decision, not a transient failure: never retried.
-      return { ok: false, failureClass: 'TERMINAL', reason: `ROUTING_DENIED:${result.code}` };
+      // Carry the routing authority's disposition; default to TERMINAL only when
+      // the authority did not supply one.
+      const failureClass: FailureClass = result.disposition ?? 'TERMINAL';
+      return { ok: false, failureClass, reason: `ROUTING_DENIED:${result.code}` };
     }
     if (result.transport.ok) {
       return { ok: true };
     }
+    // A transport outcome is never a compliance verdict. An AMBIGUOUS outcome
+    // (remote may have accepted) is quarantined for reconciliation; a clean
+    // retryable failure is retried; anything else is terminal.
+    const failureClass: FailureClass = result.transport.ambiguous
+      ? 'AMBIGUOUS'
+      : result.transport.retryable
+        ? 'CLEAN_RETRYABLE'
+        : 'TERMINAL';
     return {
       ok: false,
-      failureClass: result.transport.retryable ? 'CLEAN_RETRYABLE' : 'TERMINAL',
+      failureClass,
       reason: `TRANSPORT_FAILED:${result.transport.error.error}`,
     };
   };

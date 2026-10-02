@@ -47,7 +47,7 @@ async function seedRouter(t: TestConvex) {
   await seedAuthorization(t, {
     principalId: HUB_ROUTER,
     principalType: 'HUMAN',
-    roles: ['operator'],
+    roles: ['admin'],
     serviceIds: [ROUTING_IDENTITY],
     environments: [ENV],
   });

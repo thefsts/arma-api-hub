@@ -781,5 +781,10 @@ export default defineSchema({
     .index('by_onboardingId', ['onboardingId'])
     .index('by_productId', ['productId'])
     .index('by_productId_tenantId', ['productId', 'tenantId'])
+    // Exact binding index: (productId, tenantId, environment) is the routing
+    // authority key. A composite index lets registration and routing query the
+    // EXACT binding (never a bounded `.take(N)` scan whose limit could hide a
+    // conflicting sibling), so uniqueness is provable rather than inferred.
+    .index('by_productId_tenantId_environment', ['productId', 'tenantId', 'environment'])
     .index('by_state', ['state']),
 });
