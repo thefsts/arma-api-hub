@@ -56,17 +56,17 @@
 - [x] Report every caller of forward/createGovernedDispatcher/createGovernedJobHandler/processJob/route (audit complete)
 
 ## 11. Hostile authorization boundaries
-- [ ] Add/verify all negatives (tenant/service/product/env cross, credential, version, scope, forged history, dup binding, >10 siblings, route mismatch, lifecycle, missing/suspended/revoked, gate failure)
+- [x] Add/verify all negatives (tenant/service/product/env cross, credential, version, scope, forged history, dup binding, >10 siblings, route mismatch, lifecycle, missing/suspended/revoked, gate failure) — matrix in report Point 13
 
 ## 12. Validation
-- [ ] pnpm validate at final head; report each stage + counts
-- [ ] Focused test groups (AUTHORIZATION/HOSTILE/BINDING/WORKER/HOLD/RETRY/AMBIGUOUS/IDEMPOTENCY/COST/CORRELATION)
+- [x] pnpm validate at final head (107e8d9) EXIT 0; 29 files / 333 tests; 128 Convex fns (0 public/128 internal); all stages pass
+- [x] Focused test groups (AUTHORIZATION/HOSTILE/BINDING/WORKER/HOLD/RETRY/AMBIGUOUS/IDEMPOTENCY/COST/CORRELATION) — report Point 15
 
 ## 13. Evidence classification
-- [ ] Label every proof MOCKED / IN-PROCESS / CONFIGURED DEV RUNTIME / LIVE DEV E2E
+- [x] Label every proof MOCKED / IN-PROCESS / CONFIGURED DEV RUNTIME / LIVE DEV E2E — report Point 16
 
 ## 14. Push / PR rules
-- [ ] Push to phase8/api-hub-integration-review; keep PR#6 OPEN/DRAFT/UNMERGED; no merges/deploy
+- [x] Push to phase8/api-hub-integration-review (545106f..107e8d9 fast-forward); PR#6 OPEN/DRAFT/UNMERGED; no merges/deploy
 
 ## 15. Final report
-- [ ] Produce 21-point final report
+- [x] Produce 21-point final report (PHASE-8-PM-HOLD-CORRECTIONS-REPORT.md)
