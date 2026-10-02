@@ -1,30 +1,60 @@
 // ARMA API Hub — durable worker entrypoint.
 //
-// Phase 0 scope: prove the durable worker runtime wiring. No production
-// connectors are registered. The worker loop is intentionally minimal and
-// fail-closed: when outbound delivery is disabled it does not deliver.
+// The worker runs the GOVERNED dispatch path: every job it processes is routed
+// through the trusted routing gate before any Compliance Core transport call. The
+// governed path is composed in `composition.ts`; this entrypoint wires the queue,
+// the trusted server clock, and the runtime boundary, then drives the loop.
+//
+// In Phase 0 / DEVELOPMENT no live boundary is configured and outbound delivery
+// is disabled by default, so the loop idles: it proves the governed wiring
+// without performing any delivery and without inventing production
+// infrastructure.
 
 import { loadConfig } from '@arma/config';
 import { SafeLogger } from '@arma/observability';
+import { loadGovernedBoundary } from './boundary.js';
+import { createGovernedWorker } from './composition.js';
 import { InMemoryQueue } from './queue.js';
-import { processJob } from './processor.js';
+import type { GovernedDispatchJobPayload } from './governedDispatch.js';
 
 async function main(): Promise<void> {
   const config = loadConfig();
   const log = new SafeLogger({ level: config.API_HUB_LOG_LEVEL });
-  const queue = new InMemoryQueue();
+  // DEVELOPMENT/local queue. A durable broker replaces this without touching the
+  // governed path (the governed path depends only on the `Queue` contract).
+  const queue = new InMemoryQueue<GovernedDispatchJobPayload>();
 
   log.info('worker.started', {
     environment: config.API_HUB_ENV,
     outboundDeliveryDisabled: config.API_HUB_OUTBOUND_DELIVERY_DISABLED,
   });
 
-  // Phase 0: no connectors are registered, so the loop simply idles. This
-  // proves the runtime wiring without performing any delivery.
+  const boundary = loadGovernedBoundary(config);
+  if (boundary === null) {
+    // Fail-closed: no live boundary means no governed dispatch. The loop idles.
+    log.info('worker.governed-boundary.unconfigured', {
+      note: 'no live internal routing boundary / Core transport configured; idling',
+    });
+  }
+
+  const worker =
+    boundary === null
+      ? null
+      : createGovernedWorker({
+          queue,
+          // Trusted server clock; never caller-supplied.
+          clock: () => Date.now(),
+          boundary,
+        });
+
   const tick = async (): Promise<void> => {
-    const job = await queue.reserve(Date.now());
-    if (!job) return;
-    await processJob(queue, job, async () => ({ ok: true }), Date.now());
+    const now = Date.now();
+    if (worker === null) {
+      // No boundary: reserve-and-hold nothing; simply idle.
+      await queue.reserve(now);
+      return;
+    }
+    await worker.runOnce(now);
   };
 
   const timer = setInterval(() => {

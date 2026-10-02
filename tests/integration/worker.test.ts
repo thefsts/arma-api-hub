@@ -64,7 +64,7 @@ describe('durable worker', () => {
     expect(queue.deadLetterCount()).toBe(1);
   });
 
-  it('never blindly retries an ambiguous outcome', async () => {
+  it('never blindly retries an ambiguous outcome (quarantined for reconciliation)', async () => {
     const queue = new InMemoryQueue();
     const job = makeJob();
     const result = await processJob(
@@ -73,8 +73,12 @@ describe('durable worker', () => {
       async () => ({ ok: false, failureClass: 'AMBIGUOUS', reason: 'UNKNOWN_SIDE_EFFECT' }),
       1_700_000_000_000,
     );
-    expect(result.status).toBe('DEAD_LETTERED');
-    expect(queue.deadLetterCount()).toBe(1);
+    // Ambiguous work is neither retried nor silently discarded: it is held for
+    // reconciliation/review.
+    expect(result.status).toBe('HELD_FOR_REVIEW');
+    expect(queue.reconciliationCount()).toBe(1);
+    expect(queue.deadLetterCount()).toBe(0);
+    expect(await queue.size()).toBe(0);
   });
 
   it('dead-letters once retries are exhausted', async () => {

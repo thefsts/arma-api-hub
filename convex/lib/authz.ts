@@ -165,6 +165,22 @@ export function requireRole(ctx: AuthorizationContext, allowed: readonly Role[])
   }
 }
 
+/**
+ * Onboarding administration authority. Creating, advancing, suspending, or
+ * revoking product-onboarding authority is a privileged CONTROL-PLANE action
+ * reserved for a HUMAN administrator. A SERVICE principal (a product calling in
+ * as its own routing identity) may NEVER administer onboarding authority, even
+ * if a durable record mistakenly grants it the `admin` role: the product must
+ * never be able to self-register or self-activate. This makes the "SERVICE
+ * principals do not hold admin" invariant enforced rather than assumed.
+ */
+export function requireAdminAuthority(ctx: AuthorizationContext): void {
+  if (ctx.principalType !== 'HUMAN') {
+    fail('FORBIDDEN', 'Onboarding administration requires a human administrator.');
+  }
+  requireRole(ctx, ['admin']);
+}
+
 export function requireSystemScope(ctx: AuthorizationContext, systemId: string): void {
   if (!canAccessSystem(ctx, systemId)) {
     fail('FORBIDDEN', 'The caller is not authorized for this system.', { systemId });

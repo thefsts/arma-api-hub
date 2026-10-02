@@ -22,6 +22,21 @@ export interface Queue<T = unknown> {
   ack(jobId: string): Promise<void>;
   /** Move a job to the dead-letter queue after exhausting attempts. */
   deadLetter(job: Job<T>, reason: string): Promise<void>;
+  /**
+   * Hold a job under a governance control (suspension, vendor shutdown,
+   * spend-limit throttle/block, connector kill switch, temporary gate failure).
+   * The job is preserved — never dead-lettered, never auto-retried — and does
+   * NOT consume its retry budget. It can resume via `release` once the control
+   * is lifted.
+   */
+  hold(job: Job<T>, reason: string): Promise<void>;
+  /**
+   * Quarantine a job whose delivery is AMBIGUOUS (a remote side may have
+   * accepted). It is never auto-resumed; it waits for reconciliation/review.
+   */
+  holdForReconciliation(job: Job<T>, reason: string): Promise<void>;
+  /** Resume every governance-held job (available immediately), preserving order. */
+  release(now: number): Promise<number>;
   size(): Promise<number>;
 }
 
@@ -30,6 +45,8 @@ export class InMemoryQueue<T = unknown> implements Queue<T> {
   private readonly ready: Job<T>[] = [];
   private readonly inFlight = new Map<string, Job<T>>();
   private readonly dead: { job: Job<T>; reason: string }[] = [];
+  private readonly held: { job: Job<T>; reason: string }[] = [];
+  private readonly quarantined: { job: Job<T>; reason: string }[] = [];
 
   async enqueue(job: Job<T>): Promise<void> {
     this.ready.push(job);
@@ -54,11 +71,41 @@ export class InMemoryQueue<T = unknown> implements Queue<T> {
     this.dead.push({ job, reason });
   }
 
+  async hold(job: Job<T>, reason: string): Promise<void> {
+    this.inFlight.delete(job.jobId);
+    this.held.push({ job, reason });
+    // Preserve ordering information: held work resumes in original enqueue order.
+    this.held.sort((a, b) => a.job.enqueuedAt - b.job.enqueuedAt);
+  }
+
+  async holdForReconciliation(job: Job<T>, reason: string): Promise<void> {
+    this.inFlight.delete(job.jobId);
+    this.quarantined.push({ job, reason });
+  }
+
+  async release(now: number): Promise<number> {
+    const released = this.held.splice(0, this.held.length);
+    for (const { job } of released) {
+      this.ready.push({ ...job, availableAt: now });
+    }
+    // Stable sort keeps the held (enqueue) order for jobs released together.
+    this.ready.sort((a, b) => a.availableAt - b.availableAt);
+    return released.length;
+  }
+
   async size(): Promise<number> {
     return this.ready.length;
   }
 
   deadLetterCount(): number {
     return this.dead.length;
+  }
+
+  heldCount(): number {
+    return this.held.length;
+  }
+
+  reconciliationCount(): number {
+    return this.quarantined.length;
   }
 }
