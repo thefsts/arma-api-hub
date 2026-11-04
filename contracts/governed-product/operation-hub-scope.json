@@ -1,0 +1,225 @@
+{
+  "id": "FSTS-GOVERNED-PRODUCT-OPERATION-HUB-SCOPE-BINDING",
+  "version": "1.0.0",
+  "description": "Deterministic binding from each Compliance Core operation to the ARMA API Hub scope(s) that authorize it. GENERATED from the vendored Core registry (operation-registry.json + scope-registry.json). An operation with an empty hubScopes array has NO Hub scope that authorizes it and is therefore not routable through the Hub scope vocabulary; the governed product client fails closed for such operations. This file is a derived projection, never an authority.",
+  "source": {
+    "operationRegistry": "contracts/compliance-core/core-handoff/registry/service/operation-registry.json",
+    "scopeRegistry": "contracts/compliance-core/core-handoff/registry/service/scope-registry.json",
+    "coreMainSha": "c7ac04b2d40624bef1742f819a9f7eee43e3d12c"
+  },
+  "counts": {
+    "operations": 26,
+    "routable": 19,
+    "unroutable": 7
+  },
+  "operations": {
+    "applicability.record": {
+      "requiredCoreScope": "runtime:write",
+      "hubScopes": ["compliance.write"],
+      "kind": "WRITE",
+      "resourceType": "applicabilityAssessment",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    },
+    "applicability.get": {
+      "requiredCoreScope": "runtime:read",
+      "hubScopes": ["compliance.read"],
+      "kind": "READ",
+      "resourceType": "applicabilityAssessment",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    },
+    "activation.record": {
+      "requiredCoreScope": "runtime:write",
+      "hubScopes": ["compliance.write"],
+      "kind": "WRITE",
+      "resourceType": "controlActivation",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    },
+    "activation.get": {
+      "requiredCoreScope": "runtime:read",
+      "hubScopes": ["compliance.read"],
+      "kind": "READ",
+      "resourceType": "controlActivation",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    },
+    "controlRuntimeState.record": {
+      "requiredCoreScope": "runtime:write",
+      "hubScopes": ["compliance.write"],
+      "kind": "WRITE",
+      "resourceType": "controlRuntimeState",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    },
+    "verification.plan.create": {
+      "requiredCoreScope": "verification:write",
+      "hubScopes": ["verification.submit"],
+      "kind": "WRITE",
+      "resourceType": "verificationPlan",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    },
+    "verification.execution.submit": {
+      "requiredCoreScope": "verification:write",
+      "hubScopes": ["verification.submit"],
+      "kind": "WRITE",
+      "resourceType": "verificationExecution",
+      "evidenceSensitive": false,
+      "idempotencyScope": "verification-submission"
+    },
+    "verification.execution.get": {
+      "requiredCoreScope": "verification:read",
+      "hubScopes": ["compliance.read"],
+      "kind": "READ",
+      "resourceType": "verificationExecution",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    },
+    "verification.result.record": {
+      "requiredCoreScope": "verification:write",
+      "hubScopes": ["verification.submit"],
+      "kind": "WRITE",
+      "resourceType": "verificationResult",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    },
+    "evidence.record": {
+      "requiredCoreScope": "evidence:write",
+      "hubScopes": ["evidence.metadata.write"],
+      "kind": "WRITE",
+      "resourceType": "evidenceRecord",
+      "evidenceSensitive": true,
+      "idempotencyScope": "evidence-receipt"
+    },
+    "evidence.get": {
+      "requiredCoreScope": "evidence:read",
+      "hubScopes": ["compliance.read"],
+      "kind": "READ",
+      "resourceType": "evidenceRecord",
+      "evidenceSensitive": true,
+      "idempotencyScope": null
+    },
+    "evidence.candidate.propose": {
+      "requiredCoreScope": "evidence:write",
+      "hubScopes": ["evidence.metadata.write"],
+      "kind": "WRITE",
+      "resourceType": "evidenceCandidate",
+      "evidenceSensitive": true,
+      "idempotencyScope": null
+    },
+    "observation.record": {
+      "requiredCoreScope": "runtime:write",
+      "hubScopes": ["compliance.write"],
+      "kind": "WRITE",
+      "resourceType": "observation",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    },
+    "observation.get": {
+      "requiredCoreScope": "runtime:read",
+      "hubScopes": ["compliance.read"],
+      "kind": "READ",
+      "resourceType": "observation",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    },
+    "exception.request": {
+      "requiredCoreScope": "exception:write",
+      "hubScopes": [],
+      "kind": "WRITE",
+      "resourceType": "exception",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    },
+    "exception.decide": {
+      "requiredCoreScope": "exception:approve",
+      "hubScopes": [],
+      "kind": "WRITE",
+      "resourceType": "exception",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    },
+    "exception.get": {
+      "requiredCoreScope": "exception:read",
+      "hubScopes": ["compliance.read"],
+      "kind": "READ",
+      "resourceType": "exception",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    },
+    "remediation.create": {
+      "requiredCoreScope": "remediation:write",
+      "hubScopes": [],
+      "kind": "WRITE",
+      "resourceType": "remediation",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    },
+    "remediation.action.record": {
+      "requiredCoreScope": "remediation:write",
+      "hubScopes": [],
+      "kind": "WRITE",
+      "resourceType": "remediationAction",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    },
+    "remediation.close": {
+      "requiredCoreScope": "remediation:write",
+      "hubScopes": [],
+      "kind": "WRITE",
+      "resourceType": "remediation",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    },
+    "remediation.reopen": {
+      "requiredCoreScope": "remediation:write",
+      "hubScopes": [],
+      "kind": "WRITE",
+      "resourceType": "remediation",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    },
+    "remediation.get": {
+      "requiredCoreScope": "remediation:read",
+      "hubScopes": ["compliance.read"],
+      "kind": "READ",
+      "resourceType": "remediation",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    },
+    "readiness.snapshot.record": {
+      "requiredCoreScope": "readiness:write",
+      "hubScopes": [],
+      "kind": "WRITE",
+      "resourceType": "readinessSnapshot",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    },
+    "readiness.snapshot.get": {
+      "requiredCoreScope": "readiness:read",
+      "hubScopes": ["compliance.read"],
+      "kind": "READ",
+      "resourceType": "readinessSnapshot",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    },
+    "drift.record": {
+      "requiredCoreScope": "runtime:write",
+      "hubScopes": ["compliance.write"],
+      "kind": "WRITE",
+      "resourceType": "runtimeDrift",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    },
+    "drift.get": {
+      "requiredCoreScope": "runtime:read",
+      "hubScopes": ["compliance.read"],
+      "kind": "READ",
+      "resourceType": "runtimeDrift",
+      "evidenceSensitive": false,
+      "idempotencyScope": null
+    }
+  }
+}

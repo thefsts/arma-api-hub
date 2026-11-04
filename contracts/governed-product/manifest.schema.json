@@ -1,0 +1,366 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thefsts.github.io/arma-api-hub/governed-product/manifest.schema.json",
+  "title": "FSTS Governed Product Integration Manifest",
+  "description": "Deterministic, secret-free declaration by which a product declares how it connects to the FSTS Compliance Core THROUGH the ARMA API Hub. This manifest is a DECLARATION of intent and constraints only. It never grants authority, never asserts a compliance state, and never carries secret material. The Core remains the sole compliance authority; the Hub transports; the product is a governed client.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifestVersion",
+    "integrationVersion",
+    "productId",
+    "displayName",
+    "productType",
+    "ownership",
+    "owner",
+    "supportedEnvironments",
+    "hubRoute",
+    "requiredOperations",
+    "requiredHubScopes",
+    "credentialReference",
+    "evidenceClassifications",
+    "healthExpectations",
+    "retryExpectations",
+    "killSwitch",
+    "conformance"
+  ],
+  "properties": {
+    "manifestVersion": {
+      "description": "Version of THIS manifest schema the document conforms to.",
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "integrationVersion": {
+      "description": "Semantic version of the product's governed integration. Bumped on any change to operations, scopes, route, or evidence classification.",
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "productId": {
+      "description": "Stable product identifier. Lowercase, hyphenated. Must be unique across FSTS.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
+    },
+    "displayName": {
+      "description": "Human-readable product name. Display only; never an authority input.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "productType": {
+      "description": "Governed product category. Drives conformance profile selection, never authority.",
+      "type": "string",
+      "enum": [
+        "SECURITY_OPERATIONS",
+        "PRIVACY",
+        "LEGAL_ASSURANCE",
+        "QUALITY_ASSURANCE",
+        "CRM",
+        "EVENTS",
+        "CLIENT_PORTAL",
+        "CANNABIS_LOGISTICS",
+        "OTHER_APPROVED"
+      ]
+    },
+    "ownership": {
+      "description": "Ownership class. A CLIENT_OWNED or PARTNER_OWNED product is never treated as FSTS-owned.",
+      "type": "string",
+      "enum": ["FSTS_OWNED", "CLIENT_OWNED", "PARTNER_OWNED"]
+    },
+    "owner": {
+      "description": "Accountable team and non-secret contact reference. Never a personal credential.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["team", "contactRef", "function"],
+      "properties": {
+        "team": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "contactRef": {
+          "description": "Non-secret contact reference (mailbox/alias), not a credential.",
+          "type": "string",
+          "pattern": "^[^\\s@]+@[^\\s@]+$"
+        },
+        "function": {
+          "type": "string",
+          "enum": [
+            "product-compliance",
+            "security",
+            "legal-assurance",
+            "quality",
+            "platform",
+            "operations"
+          ]
+        }
+      }
+    },
+    "supportedEnvironments": {
+      "description": "Environments this integration may be bound to. A request in any other environment fails closed.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "enum": ["DEVELOPMENT", "PREVIEW", "PRODUCTION"] }
+    },
+    "hubRoute": {
+      "description": "The single API Hub route this product is allowed to call. There is no direct Core route.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "routingIdentity",
+        "apiHubContractVersion",
+        "apiHubVersion",
+        "coreVersion",
+        "apiVersion",
+        "directCoreAccess"
+      ],
+      "properties": {
+        "routingIdentity": {
+          "description": "The service identity the product calls the Hub as. Bound 1:1 to productId by the Hub registry.",
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
+        },
+        "apiHubContractVersion": {
+          "description": "API Hub contract version consumed. Exact match required; no silent downgrade.",
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "apiHubVersion": {
+          "description": "POST-PHASE-8 CONTRACT RECONCILIATION AMENDMENT 2. The API Hub implementation version the product expects to be routed by. Distinct from apiVersion (wire API) and coreVersion (Core). Compatibility fails closed on unsupported, missing, or mismatched values; the three version dimensions are never treated as interchangeable.",
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "coreVersion": {
+          "description": "POST-PHASE-8 CONTRACT RECONCILIATION AMENDMENT 2. The Compliance Core version the product expects to reach. Distinct from apiVersion and apiHubVersion. Compatibility fails closed on unsupported, missing, or mismatched values.",
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "apiVersion": {
+          "description": "Governed wire API version.",
+          "type": "string",
+          "enum": ["1.0.0", "1.1.0"]
+        },
+        "directCoreAccess": {
+          "description": "Structural invariant: a governed product client never opens a direct Compliance Core connection.",
+          "type": "boolean",
+          "const": false
+        }
+      }
+    },
+    "requiredOperations": {
+      "description": "The exact Core operations this product may invoke. Any other operation fails closed at the Hub routing gate.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "applicability.record",
+          "applicability.get",
+          "activation.record",
+          "activation.get",
+          "controlRuntimeState.record",
+          "verification.plan.create",
+          "verification.execution.submit",
+          "verification.execution.get",
+          "verification.result.record",
+          "evidence.record",
+          "evidence.get",
+          "evidence.candidate.propose",
+          "observation.record",
+          "observation.get",
+          "exception.request",
+          "exception.decide",
+          "exception.get",
+          "remediation.create",
+          "remediation.action.record",
+          "remediation.close",
+          "remediation.reopen",
+          "remediation.get",
+          "readiness.snapshot.record",
+          "readiness.snapshot.get",
+          "drift.record",
+          "drift.get"
+        ]
+      }
+    },
+    "requiredHubScopes": {
+      "description": "The exact Hub scopes this product declares. The Hub maps each to Core scopes; any unmapped or undeclared scope fails closed.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "compliance.read",
+          "compliance.write",
+          "verification.submit",
+          "evidence.metadata.write",
+          "policy.distribute",
+          "adoption.receipt.submit",
+          "rollback.request",
+          "telemetry.write"
+        ]
+      }
+    },
+    "credentialReference": {
+      "description": "How the product references (never holds) its signing credential. The Hub resolves the reference to signing material; the product never submits secret material.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "referenceScheme", "rotationExpectation", "secretMaterial"],
+      "properties": {
+        "required": { "type": "boolean", "const": true },
+        "referenceScheme": {
+          "description": "Opaque, non-secret reference scheme (e.g. a keyId reference).",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "rotationExpectation": {
+          "type": "string",
+          "enum": ["ROTATE_ON_SCHEDULE", "ROTATE_ON_COMPROMISE", "ROTATE_ON_EXPIRY"]
+        },
+        "secretMaterial": {
+          "description": "Structural invariant: the manifest never carries secret material.",
+          "type": "boolean",
+          "const": false
+        }
+      }
+    },
+    "evidenceClassifications": {
+      "description": "Evidence handling declaration. Metadata/reference only by default; raw sensitive evidence is rejected.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maxClassification",
+        "evidenceSensitive",
+        "rawSensitiveEvidence",
+        "referenceOnly"
+      ],
+      "properties": {
+        "maxClassification": {
+          "type": "string",
+          "enum": ["PUBLIC", "INTERNAL", "CONFIDENTIAL", "PROTECTED", "REGULATED"]
+        },
+        "evidenceSensitive": { "type": "boolean" },
+        "rawSensitiveEvidence": {
+          "description": "Structural invariant: raw sensitive evidence is not stored or submitted by default.",
+          "type": "boolean",
+          "const": false
+        },
+        "referenceOnly": {
+          "description": "Structural invariant: evidence is carried as metadata + secure reference only.",
+          "type": "boolean",
+          "const": true
+        }
+      }
+    },
+    "healthExpectations": {
+      "description": "How the product reports and observes health. Health is an operational signal, never a compliance verdict.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["healthOperation", "readinessContractId", "maxStalenessMs"],
+      "properties": {
+        "healthOperation": {
+          "type": "string",
+          "enum": ["health.read", "readiness.snapshot.get", "readiness.snapshot.record"]
+        },
+        "readinessContractId": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9.-]{2,80}$"
+        },
+        "maxStalenessMs": {
+          "description": "A health report older than this is treated as UNKNOWN, never as healthy.",
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 86400000
+        }
+      }
+    },
+    "retryExpectations": {
+      "description": "Bounded retry policy. Ambiguous outcomes are reconciled, never blindly retried; held work is preserved, never discarded.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scheduleMs", "maxAttempts", "ambiguousPolicy", "heldPolicy"],
+      "properties": {
+        "scheduleMs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": { "type": "integer", "minimum": 100, "maximum": 3600000 }
+        },
+        "maxAttempts": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "ambiguousPolicy": { "type": "string", "const": "RECONCILE" },
+        "heldPolicy": { "type": "string", "const": "PRESERVE" }
+      }
+    },
+    "killSwitch": {
+      "description": "The product must honour the Hub/Core kill switch. Engaged kill switch fails closed for all outbound calls. POST-PHASE-8 CONTRACT RECONCILIATION AMENDMENT 1: the scope vocabulary is Core's authoritative vocabulary verbatim (GLOBAL | PRODUCT | TENANT | ENVIRONMENT). SERVICE is not an authoritative rollout scope and is rejected. Every non-GLOBAL scope requires an explicit scopeRef; GLOBAL must not carry one.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "scope"],
+      "properties": {
+        "required": { "type": "boolean", "const": true },
+        "scope": {
+          "type": "string",
+          "enum": ["GLOBAL", "PRODUCT", "TENANT", "ENVIRONMENT"]
+        },
+        "scopeRef": {
+          "description": "Required for PRODUCT, TENANT, and ENVIRONMENT scopes: the productId, tenantId, or environment the control is bound to. Forbidden for GLOBAL.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]{2,128}$"
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "scope": { "const": "GLOBAL" } }, "required": ["scope"] },
+          "then": { "not": { "required": ["scopeRef"] } }
+        },
+        {
+          "if": {
+            "properties": { "scope": { "enum": ["PRODUCT", "TENANT", "ENVIRONMENT"] } },
+            "required": ["scope"]
+          },
+          "then": { "required": ["scopeRef"] }
+        }
+      ]
+    },
+    "conformance": {
+      "description": "The conformance suite the product must pass before the Hub will route its traffic.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["suiteVersion", "requiredAreas"],
+      "properties": {
+        "suiteVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "requiredAreas": {
+          "type": "array",
+          "minItems": 23,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "no-direct-core-access",
+              "identity-binding",
+              "tenant-binding",
+              "product-binding",
+              "environment-binding",
+              "scope-enforcement",
+              "operation-enforcement",
+              "credential-references-only",
+              "signing-integrity",
+              "freshness",
+              "nonce-replay",
+              "idempotency",
+              "version-mismatch",
+              "route-mismatch",
+              "suspension",
+              "revocation",
+              "kill-switch",
+              "hub-outage",
+              "core-outage",
+              "bounded-errors",
+              "audit-correlation",
+              "raw-evidence-rejection",
+              "false-compliance-claims"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
