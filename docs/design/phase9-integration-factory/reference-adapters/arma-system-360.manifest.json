@@ -1,0 +1,88 @@
+{
+  "manifestVersion": "1.0.0",
+  "integrationVersion": "1.0.0",
+  "productId": "arma-system-360",
+  "displayName": "ARMA System 360",
+  "productType": "SECURITY_OPERATIONS",
+  "ownership": "FSTS_OWNED",
+  "owner": {
+    "team": "ARMA Platform",
+    "contactRef": "arma-platform@fsts.invalid",
+    "function": "platform"
+  },
+  "supportedEnvironments": ["PREVIEW", "PRODUCTION"],
+  "hubRoute": {
+    "routingIdentity": "svc-arma-system-360",
+    "apiHubContractVersion": "1.0.0",
+    "apiVersion": "1.0.0",
+    "directCoreAccess": false
+  },
+  "requiredOperations": [
+    "evidence.record",
+    "observation.record",
+    "verification.execution.submit",
+    "verification.result.record",
+    "readiness.snapshot.get"
+  ],
+  "requiredHubScopes": [
+    "evidence.metadata.write",
+    "verification.submit",
+    "compliance.read",
+    "telemetry.write"
+  ],
+  "credentialReference": {
+    "required": true,
+    "referenceScheme": "hub-keyid",
+    "rotationExpectation": "ROTATE_ON_SCHEDULE",
+    "secretMaterial": false
+  },
+  "evidenceClassifications": {
+    "maxClassification": "PROTECTED",
+    "evidenceSensitive": true,
+    "rawSensitiveEvidence": false,
+    "referenceOnly": true
+  },
+  "healthExpectations": {
+    "healthOperation": "readiness.snapshot.get",
+    "readinessContractId": "compliance-core.health.readiness.v1",
+    "maxStalenessMs": 300000
+  },
+  "retryExpectations": {
+    "scheduleMs": [1000, 5000, 30000, 120000, 600000],
+    "maxAttempts": 5,
+    "ambiguousPolicy": "RECONCILE",
+    "heldPolicy": "PRESERVE"
+  },
+  "killSwitch": {
+    "required": true,
+    "scope": "PRODUCT"
+  },
+  "conformance": {
+    "suiteVersion": "1.0.0",
+    "requiredAreas": [
+      "no-direct-core-access",
+      "identity-binding",
+      "tenant-binding",
+      "product-binding",
+      "environment-binding",
+      "scope-enforcement",
+      "operation-enforcement",
+      "credential-references-only",
+      "signing-integrity",
+      "freshness",
+      "nonce-replay",
+      "idempotency",
+      "version-mismatch",
+      "route-mismatch",
+      "suspension",
+      "revocation",
+      "kill-switch",
+      "hub-outage",
+      "core-outage",
+      "bounded-errors",
+      "audit-correlation",
+      "raw-evidence-rejection",
+      "false-compliance-claims"
+    ]
+  }
+}
