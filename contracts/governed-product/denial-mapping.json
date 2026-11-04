@@ -1,0 +1,371 @@
+{
+  "id": "FSTS-GOVERNED-PRODUCT-DENIAL-MAPPING",
+  "version": "1.0.0",
+  "amendment": "POST-PHASE-8 CONTRACT RECONCILIATION AMENDMENT 4",
+  "description": "ONE closed deterministic Core -> Hub/SDK denial mapping table. Every known Phase 8 Compliance Core denial (42-code API_ERROR_CODES set) and every ARMA API Hub failure-taxonomy/routing-denial code maps to exactly one bounded SDK-facing failure and one retry disposition. The original Core code is preserved as structured cause. Unknown or unmapped codes FAIL CLOSED to UPSTREAM_UNAVAILABLE/TERMINAL. A denial is an operational outcome, never a compliance verdict.",
+  "source": {
+    "coreDenialSet": "convex/lib/apiErrors.ts API_ERROR_CODES (Core main 2c8574d)",
+    "hubFailureTaxonomy": "contracts/compliance-core/core-handoff/registry/service/failure-taxonomy.json",
+    "authoritativeModule": "packages/governed-product-client/src/denial-map.ts"
+  },
+  "counts": {
+    "coreDenialCodes": 42,
+    "hubDenialCodes": 17,
+    "mappedEntries": 57
+  },
+  "failClosedDefault": {
+    "code": "UPSTREAM_UNAVAILABLE",
+    "disposition": "TERMINAL",
+    "meaning": "unrecognised upstream denial (failed closed)"
+  },
+  "coreDenialCodes": [
+    "UNAUTHENTICATED",
+    "IDENTITY_INVALID",
+    "IDENTITY_REVOKED",
+    "IDENTITY_SUSPENDED",
+    "CREDENTIAL_INVALID",
+    "TENANT_UNRESOLVED",
+    "TENANT_ACCESS_DENIED",
+    "FORBIDDEN",
+    "SCOPE_VIOLATION",
+    "PRODUCT_ISOLATION_VIOLATION",
+    "ENVIRONMENT_NOT_AUTHORIZED",
+    "MALFORMED_PAYLOAD",
+    "REQUEST_TAMPERED",
+    "REQUEST_STALE",
+    "REQUEST_FUTURE",
+    "NONCE_INVALID",
+    "NONCE_REPLAY",
+    "DUPLICATE_REQUEST",
+    "IDEMPOTENCY_CONFLICT",
+    "UNKNOWN_API_VERSION",
+    "API_VERSION_UNSUPPORTED",
+    "RATE_LIMITED",
+    "CONTRACT_UNKNOWN",
+    "INTERNAL",
+    "ONBOARDING_NOT_APPROVED",
+    "ONBOARDING_STATE_INVALID",
+    "ONBOARDING_FORGED",
+    "PRODUCT_NOT_APPROVED",
+    "INTEGRATION_INACTIVE",
+    "CREDENTIAL_EXPIRED",
+    "CREDENTIAL_REVOKED",
+    "ROTATION_INVALID",
+    "TENANT_BINDING_MISSING",
+    "SCOPE_NOT_BOUND",
+    "PRODUCT_UNKNOWN",
+    "HUB_ROUTE_INVALID",
+    "CONTRACT_VERSION_STALE",
+    "ROLLOUT_BLOCKED",
+    "INTEGRATION_UNHEALTHY",
+    "HEALTH_TELEMETRY_INVALID",
+    "MANIFEST_INVALID",
+    "OFFBOARDING_INVALID"
+  ],
+  "hubDenialCodes": [
+    "AUTHENTICATION_FAILED",
+    "AUTHORIZATION_DENIED",
+    "TENANT_DENIED",
+    "PRODUCT_DENIED",
+    "ENVIRONMENT_DENIED",
+    "SCOPE_DENIED",
+    "REPLAY_DENIED",
+    "STALE_REQUEST",
+    "INTEGRITY_FAILED",
+    "IDEMPOTENCY_CONFLICT",
+    "RATE_LIMITED",
+    "UNSUPPORTED_VERSION",
+    "UNKNOWN_OPERATION",
+    "VALIDATION_FAILED",
+    "DEPENDENCY_UNAVAILABLE",
+    "INTERNAL_FAILURE",
+    "NOT_FOUND"
+  ],
+  "mapping": {
+    "UNAUTHENTICATED": {
+      "code": "AUTHENTICATION_FAILED",
+      "disposition": "TERMINAL",
+      "meaning": "service authentication failed"
+    },
+    "IDENTITY_INVALID": {
+      "code": "AUTHENTICATION_FAILED",
+      "disposition": "TERMINAL",
+      "meaning": "service identity is invalid"
+    },
+    "IDENTITY_REVOKED": {
+      "code": "INTEGRATION_INACTIVE",
+      "disposition": "TERMINAL",
+      "meaning": "service identity revoked"
+    },
+    "IDENTITY_SUSPENDED": {
+      "code": "INTEGRATION_INACTIVE",
+      "disposition": "HELD",
+      "meaning": "service identity suspended"
+    },
+    "CREDENTIAL_INVALID": {
+      "code": "AUTHENTICATION_FAILED",
+      "disposition": "TERMINAL",
+      "meaning": "credential invalid"
+    },
+    "TENANT_UNRESOLVED": {
+      "code": "TENANT_DENIED",
+      "disposition": "TERMINAL",
+      "meaning": "tenant could not be resolved"
+    },
+    "TENANT_ACCESS_DENIED": {
+      "code": "TENANT_DENIED",
+      "disposition": "TERMINAL",
+      "meaning": "tenant access denied"
+    },
+    "FORBIDDEN": {
+      "code": "AUTHORIZATION_DENIED",
+      "disposition": "TERMINAL",
+      "meaning": "authorization denied"
+    },
+    "SCOPE_VIOLATION": {
+      "code": "SCOPE_DENIED",
+      "disposition": "TERMINAL",
+      "meaning": "required scope not held"
+    },
+    "PRODUCT_ISOLATION_VIOLATION": {
+      "code": "PRODUCT_DENIED",
+      "disposition": "TERMINAL",
+      "meaning": "product isolation violated"
+    },
+    "ENVIRONMENT_NOT_AUTHORIZED": {
+      "code": "ENVIRONMENT_DENIED",
+      "disposition": "TERMINAL",
+      "meaning": "environment not authorized"
+    },
+    "MALFORMED_PAYLOAD": {
+      "code": "VALIDATION_FAILED",
+      "disposition": "TERMINAL",
+      "meaning": "request payload malformed"
+    },
+    "REQUEST_TAMPERED": {
+      "code": "INTEGRITY_FAILED",
+      "disposition": "TERMINAL",
+      "meaning": "request integrity verification failed"
+    },
+    "REQUEST_STALE": {
+      "code": "STALE_REQUEST",
+      "disposition": "TERMINAL",
+      "meaning": "request outside freshness window"
+    },
+    "REQUEST_FUTURE": {
+      "code": "STALE_REQUEST",
+      "disposition": "TERMINAL",
+      "meaning": "request timestamp too far in the future"
+    },
+    "NONCE_INVALID": {
+      "code": "INTEGRITY_FAILED",
+      "disposition": "TERMINAL",
+      "meaning": "nonce invalid"
+    },
+    "NONCE_REPLAY": {
+      "code": "REPLAY_DENIED",
+      "disposition": "TERMINAL",
+      "meaning": "request replay denied"
+    },
+    "DUPLICATE_REQUEST": {
+      "code": "REPLAY_DENIED",
+      "disposition": "TERMINAL",
+      "meaning": "duplicate request denied"
+    },
+    "IDEMPOTENCY_CONFLICT": {
+      "code": "IDEMPOTENCY_CONFLICT",
+      "disposition": "TERMINAL",
+      "meaning": "idempotency key reused with a different request"
+    },
+    "UNKNOWN_API_VERSION": {
+      "code": "UNSUPPORTED_VERSION",
+      "disposition": "TERMINAL",
+      "meaning": "unknown api version"
+    },
+    "API_VERSION_UNSUPPORTED": {
+      "code": "UNSUPPORTED_VERSION",
+      "disposition": "TERMINAL",
+      "meaning": "api version unsupported"
+    },
+    "CONTRACT_UNKNOWN": {
+      "code": "UNSUPPORTED_VERSION",
+      "disposition": "TERMINAL",
+      "meaning": "contract version unknown"
+    },
+    "RATE_LIMITED": {
+      "code": "RATE_LIMITED",
+      "disposition": "CLEAN_RETRYABLE",
+      "meaning": "rate limit exceeded"
+    },
+    "INTERNAL": {
+      "code": "UPSTREAM_UNAVAILABLE",
+      "disposition": "AMBIGUOUS",
+      "meaning": "internal service failure"
+    },
+    "ONBOARDING_NOT_APPROVED": {
+      "code": "INTEGRATION_INACTIVE",
+      "disposition": "HELD",
+      "meaning": "onboarding not approved"
+    },
+    "ONBOARDING_STATE_INVALID": {
+      "code": "INTEGRATION_INACTIVE",
+      "disposition": "TERMINAL",
+      "meaning": "onboarding state invalid"
+    },
+    "ONBOARDING_FORGED": {
+      "code": "INTEGRATION_INACTIVE",
+      "disposition": "TERMINAL",
+      "meaning": "onboarding history forged"
+    },
+    "PRODUCT_NOT_APPROVED": {
+      "code": "PRODUCT_DENIED",
+      "disposition": "HELD",
+      "meaning": "product not approved"
+    },
+    "INTEGRATION_INACTIVE": {
+      "code": "INTEGRATION_INACTIVE",
+      "disposition": "HELD",
+      "meaning": "integration is not active"
+    },
+    "CREDENTIAL_EXPIRED": {
+      "code": "CREDENTIAL_UNRESOLVED",
+      "disposition": "TERMINAL",
+      "meaning": "credential expired"
+    },
+    "CREDENTIAL_REVOKED": {
+      "code": "CREDENTIAL_UNRESOLVED",
+      "disposition": "TERMINAL",
+      "meaning": "credential revoked"
+    },
+    "ROTATION_INVALID": {
+      "code": "CREDENTIAL_UNRESOLVED",
+      "disposition": "TERMINAL",
+      "meaning": "credential rotation invalid"
+    },
+    "TENANT_BINDING_MISSING": {
+      "code": "TENANT_DENIED",
+      "disposition": "TERMINAL",
+      "meaning": "tenant binding missing"
+    },
+    "SCOPE_NOT_BOUND": {
+      "code": "SCOPE_DENIED",
+      "disposition": "TERMINAL",
+      "meaning": "scope not bound"
+    },
+    "PRODUCT_UNKNOWN": {
+      "code": "PRODUCT_DENIED",
+      "disposition": "TERMINAL",
+      "meaning": "product unknown"
+    },
+    "HUB_ROUTE_INVALID": {
+      "code": "ROUTE_ENVELOPE_MISMATCH",
+      "disposition": "TERMINAL",
+      "meaning": "API Hub routing id does not match the registered route"
+    },
+    "CONTRACT_VERSION_STALE": {
+      "code": "UNSUPPORTED_VERSION",
+      "disposition": "TERMINAL",
+      "meaning": "contract version stale or unsupported"
+    },
+    "ROLLOUT_BLOCKED": {
+      "code": "INTEGRATION_INACTIVE",
+      "disposition": "HELD",
+      "meaning": "rollout or kill switch blocks consumption"
+    },
+    "INTEGRATION_UNHEALTHY": {
+      "code": "UPSTREAM_UNAVAILABLE",
+      "disposition": "HELD",
+      "meaning": "integration unhealthy (Core-derived)"
+    },
+    "HEALTH_TELEMETRY_INVALID": {
+      "code": "VALIDATION_FAILED",
+      "disposition": "TERMINAL",
+      "meaning": "health telemetry invalid"
+    },
+    "MANIFEST_INVALID": {
+      "code": "VALIDATION_FAILED",
+      "disposition": "TERMINAL",
+      "meaning": "onboarding manifest invalid"
+    },
+    "OFFBOARDING_INVALID": {
+      "code": "INTEGRATION_INACTIVE",
+      "disposition": "TERMINAL",
+      "meaning": "offboarding invalid"
+    },
+    "AUTHENTICATION_FAILED": {
+      "code": "AUTHENTICATION_FAILED",
+      "disposition": "TERMINAL",
+      "meaning": "service authentication failed"
+    },
+    "AUTHORIZATION_DENIED": {
+      "code": "AUTHORIZATION_DENIED",
+      "disposition": "TERMINAL",
+      "meaning": "authorization denied"
+    },
+    "TENANT_DENIED": {
+      "code": "TENANT_DENIED",
+      "disposition": "TERMINAL",
+      "meaning": "tenant access denied"
+    },
+    "PRODUCT_DENIED": {
+      "code": "PRODUCT_DENIED",
+      "disposition": "TERMINAL",
+      "meaning": "product access denied"
+    },
+    "ENVIRONMENT_DENIED": {
+      "code": "ENVIRONMENT_DENIED",
+      "disposition": "TERMINAL",
+      "meaning": "environment access denied"
+    },
+    "SCOPE_DENIED": {
+      "code": "SCOPE_DENIED",
+      "disposition": "TERMINAL",
+      "meaning": "required scope not held"
+    },
+    "REPLAY_DENIED": {
+      "code": "REPLAY_DENIED",
+      "disposition": "TERMINAL",
+      "meaning": "request replay denied"
+    },
+    "STALE_REQUEST": {
+      "code": "STALE_REQUEST",
+      "disposition": "TERMINAL",
+      "meaning": "request outside freshness window"
+    },
+    "INTEGRITY_FAILED": {
+      "code": "INTEGRITY_FAILED",
+      "disposition": "TERMINAL",
+      "meaning": "request integrity verification failed"
+    },
+    "UNSUPPORTED_VERSION": {
+      "code": "UNSUPPORTED_VERSION",
+      "disposition": "TERMINAL",
+      "meaning": "unsupported version"
+    },
+    "UNKNOWN_OPERATION": {
+      "code": "UNKNOWN_OPERATION",
+      "disposition": "TERMINAL",
+      "meaning": "unknown operation"
+    },
+    "VALIDATION_FAILED": {
+      "code": "VALIDATION_FAILED",
+      "disposition": "TERMINAL",
+      "meaning": "request validation failed"
+    },
+    "DEPENDENCY_UNAVAILABLE": {
+      "code": "DEPENDENCY_UNAVAILABLE",
+      "disposition": "CLEAN_RETRYABLE",
+      "meaning": "required dependency unavailable"
+    },
+    "INTERNAL_FAILURE": {
+      "code": "UPSTREAM_UNAVAILABLE",
+      "disposition": "AMBIGUOUS",
+      "meaning": "internal service failure"
+    },
+    "NOT_FOUND": {
+      "code": "VALIDATION_FAILED",
+      "disposition": "TERMINAL",
+      "meaning": "record not found"
+    }
+  }
+}

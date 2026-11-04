@@ -1,0 +1,23 @@
+{
+  "name": "@fsts/governed-product-conformance",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Governed Product Conformance Kit \u2014 the 23-area acceptance gate every product must pass before the ARMA API Hub will route its traffic. A PASS is an integration-conformance fact, never a compliance or certification claim.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@fsts/governed-product-client": "workspace:*",
+    "@arma/compliance-core-client": "workspace:*"
+  }
+}

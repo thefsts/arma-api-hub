@@ -1,0 +1,26 @@
+{
+  "name": "@fsts/governed-product-adapters",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Reference governed-product adapters (ARMA System 360, PATCHES, Law Shield, QUALIVANTA) built on @fsts/governed-product-client. These are reference implementations of the governed integration contract, not product source.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@fsts/governed-product-client": "workspace:*",
+    "@arma/compliance-core-client": "workspace:*"
+  }
+}

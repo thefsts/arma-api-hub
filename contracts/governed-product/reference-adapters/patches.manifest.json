@@ -1,0 +1,80 @@
+{
+  "manifestVersion": "1.0.0",
+  "integrationVersion": "1.0.0",
+  "productId": "patches",
+  "displayName": "PATCHES Privacy Platform",
+  "productType": "PRIVACY",
+  "ownership": "FSTS_OWNED",
+  "owner": {
+    "team": "PATCHES Compliance",
+    "contactRef": "compliance-owner@patches.invalid",
+    "function": "product-compliance"
+  },
+  "supportedEnvironments": ["PRODUCTION"],
+  "hubRoute": {
+    "routingIdentity": "svc-patches-compliance-signals",
+    "apiHubContractVersion": "1.0.0",
+    "apiHubVersion": "1.0.0",
+    "coreVersion": "1.0.0",
+    "apiVersion": "1.0.0",
+    "directCoreAccess": false
+  },
+  "requiredOperations": ["evidence.record", "observation.record"],
+  "requiredHubScopes": ["evidence.metadata.write", "telemetry.write", "compliance.write"],
+  "credentialReference": {
+    "required": true,
+    "referenceScheme": "hub-keyid",
+    "rotationExpectation": "ROTATE_ON_COMPROMISE",
+    "secretMaterial": false
+  },
+  "evidenceClassifications": {
+    "maxClassification": "CONFIDENTIAL",
+    "evidenceSensitive": true,
+    "rawSensitiveEvidence": false,
+    "referenceOnly": true
+  },
+  "healthExpectations": {
+    "healthOperation": "health.read",
+    "readinessContractId": "compliance-core.health.readiness.v1",
+    "maxStalenessMs": 300000
+  },
+  "retryExpectations": {
+    "scheduleMs": [1000, 5000, 30000, 120000, 600000],
+    "maxAttempts": 5,
+    "ambiguousPolicy": "RECONCILE",
+    "heldPolicy": "PRESERVE"
+  },
+  "killSwitch": {
+    "required": true,
+    "scope": "PRODUCT",
+    "scopeRef": "patches"
+  },
+  "conformance": {
+    "suiteVersion": "1.0.0",
+    "requiredAreas": [
+      "no-direct-core-access",
+      "identity-binding",
+      "tenant-binding",
+      "product-binding",
+      "environment-binding",
+      "scope-enforcement",
+      "operation-enforcement",
+      "credential-references-only",
+      "signing-integrity",
+      "freshness",
+      "nonce-replay",
+      "idempotency",
+      "version-mismatch",
+      "route-mismatch",
+      "suspension",
+      "revocation",
+      "kill-switch",
+      "hub-outage",
+      "core-outage",
+      "bounded-errors",
+      "audit-correlation",
+      "raw-evidence-rejection",
+      "false-compliance-claims"
+    ]
+  }
+}

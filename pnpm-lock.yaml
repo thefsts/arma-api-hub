@@ -21,6 +21,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 3.2.7
         version: 3.2.7(vitest@3.2.7(@types/node@24.13.6))
+      ajv:
+        specifier: 8.20.0
+        version: 8.20.0
       convex-test:
         specifier: 0.0.59
         version: 0.0.59(convex@1.46.0)
@@ -140,6 +143,30 @@ importers:
       '@arma/crypto':
         specifier: workspace:*
         version: link:../crypto
+
+  packages/governed-product-adapters:
+    dependencies:
+      '@arma/compliance-core-client':
+        specifier: workspace:*
+        version: link:../compliance-core-client
+      '@fsts/governed-product-client':
+        specifier: workspace:*
+        version: link:../governed-product-client
+
+  packages/governed-product-client:
+    dependencies:
+      '@arma/compliance-core-client':
+        specifier: workspace:*
+        version: link:../compliance-core-client
+
+  packages/governed-product-conformance:
+    dependencies:
+      '@arma/compliance-core-client':
+        specifier: workspace:*
+        version: link:../compliance-core-client
+      '@fsts/governed-product-client':
+        specifier: workspace:*
+        version: link:../governed-product-client
 
   packages/observability:
     dependencies:
