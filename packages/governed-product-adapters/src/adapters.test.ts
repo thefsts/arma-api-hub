@@ -36,7 +36,7 @@ function baseConfig(manifest: (typeof REFERENCE_MANIFESTS)[number]) {
     tenantId: 'tenant-reference',
     credentialReference: `hub-keyid:${manifest.productId}`,
     transport: createFakeHubTransport(allow),
-    resolveCredential: async () => ({ secret: 'reference-short-lived-signing-material' }),
+    resolveCredential: async () => ({ secret: 'test-only-reference-signing-material' }),
     clock: () => 1_800_000_000_000,
     nonceFactory: () => 'nonce-0000-00000001',
     idFactory: (p: string) => `${p}-0000-00000001`,

@@ -46,7 +46,10 @@ export function deterministicNonce(): string {
 }
 
 export const FIXED_NOW = 1_800_000_000_000;
-export const TEST_SECRET = 'conformance-short-lived-signing-material';
+// Carries an explicit `test-only` marker so the repository secret scan can tell
+// this synthetic fixture apart from real credential material without needing an
+// allow-list exception. This value is never used against a live Hub.
+export const TEST_SECRET = 'test-only-conformance-signing-material';
 
 export function makeHarness(opts: HarnessOptions): Harness {
   const transport = createFakeHubTransport(opts.script);

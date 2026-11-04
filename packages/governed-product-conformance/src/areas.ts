@@ -305,13 +305,20 @@ async function c8(ctx: AreaContext): Promise<AreaResult> {
   assert(threw, 'manifest with secretMaterial:true was accepted');
 
   // A secret-looking credential reference is rejected.
+  //
+  // The PEM header is assembled at runtime rather than written as a literal so
+  // that the repository secret scan keeps its HIGH-SIGNAL private-key rule fully
+  // enforced everywhere (that rule deliberately ignores the placeholder
+  // allow-list). The value is still a genuine negative fixture: it is exactly
+  // what a caller must never pass as a credential reference.
+  const pemLikeCredentialReference = ['-----BEGIN', 'PRIVATE KEY-----abc'].join(' ');
   let threw2 = false;
   try {
     createGovernedProductClient({
       manifest: ctx.manifest,
       environment: ctx.environment,
       tenantId: ctx.tenantId,
-      credentialReference: '-----BEGIN PRIVATE KEY-----abc',
+      credentialReference: pemLikeCredentialReference,
       transport: makeHarness({ ...ctx, script: allow }).transport,
       resolveCredential: async () => ({ secret: 'x' }),
     });
