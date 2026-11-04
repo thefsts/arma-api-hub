@@ -1,0 +1,27 @@
+{
+  "serviceId": "svc-patches-compliance-signals",
+  "displayName": "PATCHES Compliance Signals",
+  "productId": "patches",
+  "environment": "PRODUCTION",
+  "owner": {
+    "ownerId": "owner-patches-compliance",
+    "displayName": "PATCHES Compliance Owner",
+    "contactRef": "compliance-owner@patches.invalid",
+    "function": "product-compliance"
+  },
+  "classification": "CONFIDENTIAL",
+  "capabilities": [
+    {
+      "capability": "evidence.metadata.write",
+      "direction": "OUTBOUND",
+      "maxClassification": "CONFIDENTIAL",
+      "requiresApproval": true
+    },
+    {
+      "capability": "telemetry.write",
+      "direction": "OUTBOUND",
+      "maxClassification": "INTERNAL",
+      "requiresApproval": false
+    }
+  ]
+}

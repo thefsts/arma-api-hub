@@ -237,3 +237,23 @@ export const capabilityStatusValidator = v.union(
   v.literal('EXPIRED'),
   v.literal('REVOKED'),
 );
+
+// --- Product onboarding (Phase 8) ---
+
+/**
+ * Product onboarding lifecycle state. Mirrors the Core onboarding state machine
+ * (`@arma/compliance-core-client` ONBOARDING_STATES). APPROVED != ACTIVE,
+ * PROVISIONED != VERIFIED, VERIFIED != CERTIFIED; only ACTIVE produces
+ * consumable traffic. REVOKED and REJECTED are terminal.
+ */
+export const onboardingStateValidator = v.union(
+  v.literal('PROPOSED'),
+  v.literal('REVIEWED'),
+  v.literal('APPROVED'),
+  v.literal('PROVISIONED'),
+  v.literal('VERIFIED'),
+  v.literal('ACTIVE'),
+  v.literal('SUSPENDED'),
+  v.literal('REVOKED'),
+  v.literal('REJECTED'),
+);
