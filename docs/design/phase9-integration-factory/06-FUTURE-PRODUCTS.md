@@ -23,7 +23,7 @@ A CLIENT_OWNED or PARTNER_OWNED product is never treated as FSTS-owned, is bound
 | --- | --- | --- | --- | --- | --- |
 | Operon CRM | CRM | FSTS_OWNED | `evidence.record`, `observation.record`, `audit` via `telemetry.write` | `evidence.metadata.write`, `telemetry.write` | CRM business records, customer data model, sales pipeline logic |
 | SafePlay Network | EVENTS (safety) | FSTS_OWNED | `evidence.record`, `observation.record`, `verification.execution.submit` | `evidence.metadata.write`, `verification.submit`, `telemetry.write` | Incident/safety operations, venue logic, member data |
-| PortalServexa | CLIENT_PORTAL | CLIENT_OWNED | `evidence.record`, `compliance.read` (client-scoped) | `evidence.metadata.write`, `compliance.read` | Client portal content, per-client tenancy, client-owned data |
+| PortalServexa | CLIENT_PORTAL | FSTS_OWNED | `evidence.record`, `compliance.read` (client-scoped) | `evidence.metadata.write`, `compliance.read` | Customer tenants/customer data (client-owned, tenant-isolated); portal content |
 | PlayRaise | EVENTS (fundraising) | CLIENT_OWNED | `evidence.record`, `telemetry.write` | `evidence.metadata.write`, `telemetry.write` | Fundraising/event logic, donor data; PlayRaise is client-owned and never FSTS-owned |
 | ARMA Cannabis/ACSL | CANNABIS_LOGISTICS | FSTS_OWNED | `evidence.record`, `observation.record`, `readiness.snapshot.get`, `verification.execution.submit` | `evidence.metadata.write`, `verification.submit`, `compliance.read`, `telemetry.write` | Custody/traceability workflow, retail/delivery/transport operations |
 | Euphoric LS | EVENTS | FSTS_OWNED | `evidence.record`, `telemetry.write` | `evidence.metadata.write`, `telemetry.write` | Social-events/membership logic, community data |
@@ -39,7 +39,7 @@ CRM is the most likely to want broad read access. The factory's answer: CRM gets
 Safety/incident operations are evidence-sensitive. SafePlay projects `evidence.metadata.write` + `verification.submit` + `telemetry.write`, with `maxClassification: CONFIDENTIAL` or higher and `referenceOnly: true`. Raw incident media is not submitted; only metadata + secure reference. SafePlay's venue/member logic stays in SafePlay.
 
 ### PortalServexa
-Client portal, **CLIENT_OWNED**. PortalServexa is bound to client tenants and cannot act for FSTS tenants. It projects `evidence.metadata.write` + a client-scoped `compliance.read`. The factory enforces tenant binding so a client portal cannot read another client's compliance state. PortalServexa never inherits FSTS product authority.
+Client portal, **FSTS_OWNED**. The product is owned by FSTS, while the **customer tenants and customer data it serves remain client-owned and tenant-isolated**. PortalServexa is bound to the customer tenants it serves and cannot act for a tenant it is not bound to. It projects `evidence.metadata.write` + a client-scoped `compliance.read`. The factory enforces tenant binding so a portal cannot read another tenant's compliance state. PortalServexa never inherits another product's authority, and its FSTS ownership does not grant it access to customer-owned data beyond its bound tenants.
 
 ### PlayRaise
 Fundraising/events, **CLIENT_OWNED**. PlayRaise is explicitly client-owned (the Hub registry's `NON_FSTS_OWNED_PRODUCTS` already includes `PlayRaise`). It projects a minimal `evidence.metadata.write` + `telemetry.write`. It must never be represented as FSTS-owned, and it must never receive an FSTS product's scopes. Donor/fundraising data stays in PlayRaise.
@@ -56,7 +56,7 @@ Social events, FSTS_OWNED. Minimal projection: `evidence.metadata.write` + `tele
 - No product repository is touched.
 - No Hub onboarding is created or advanced.
 - No operation or scope is granted.
-- TAYA is not introduced.
+- TAYA is not introduced, not onboarded, and remains outside the current governed Compliance Core product-integration cohort.
 
 ## 5. Generalization argument
 

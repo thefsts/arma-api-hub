@@ -94,11 +94,35 @@ The directive enumerates the primitives the client must own. Each is a first-cla
 | Health reporting | client | Health is operational, never a verdict; stale health is UNKNOWN. |
 | Evidence references | client | Metadata + secure reference only; raw sensitive evidence rejected. |
 
+### 3.1 Authoritative signing boundary
+
+The factory must not become a new place where signing authority leaks. Two failure modes are explicitly forbidden, and the design is shaped so neither can occur:
+
+1. **The product never holds Compliance Core credentials.** No Core signing key, Core authority token, Core service secret, or Core-issued certificate is ever passed into, stored by, derived by, cached by, or logged by the package. The Core remains the sole authority for Core-side verification; the product is never a Core principal.
+2. **The product never introduces a new uncontrolled product-side long-lived secret.** The factory does not ask a product team to bake a shared HMAC key, bearer token, or private key into product configuration. Doing so would create a second, unmanaged long-lived secret outside the Hub/Core security contract — exactly the sprawl this factory exists to prevent.
+
+What the product actually holds is a **non-secret credential reference** (`credentialReference`). A reference is a *name*, not a secret: it identifies which credential the Hub should resolve for this product/tenant/environment. It carries no key material, no token, and no signature. The manifest schema pins `credentialReference.secretMaterial` to `const false`, and the client rejects any configuration value that looks like secret material before a client is constructed.
+
+The **authoritative signing boundary is the Hub ⇄ Core trust boundary**, not the product process. The sequence is:
+
+```
+PRODUCT  ──(credential reference, governed envelope)──▶  ARMA API HUB  ──(resolved signing material, Core contract)──▶  COMPLIANCE CORE
+   │                                                          │
+   │ holds only a reference                                   │ resolves the credential, holds/uses the signing material
+   │ never holds signing material                             │ enforces the converged Hub/Core security contract
+```
+
+The client assembles the governed envelope and computes the signature over the 14 `SIGNED_FIELDS`, but the material that makes the signature authoritative is resolved **Hub-side** from the credential reference. If the converged contract requires any product-side signing step, it must use a **short-lived, Hub-issued, per-product, scoped credential with rotation and expiry** — never a long-lived shared secret in product config. This is a binding constraint on the eventual implementation, not a decision taken in this design phase.
+
+If signing material cannot be resolved, the client fails closed with `CREDENTIAL_UNRESOLVED` (TERMINAL). It never falls back to an unsigned or self-signed request.
+
+The eventual implementation **must match the converged Hub/Core security contract** produced when API Hub Phase 8 convergence (PR #5) lands. This design deliberately does not invent a signing scheme, key custody model, or rotation policy ahead of that contract; it fixes only the boundary: authority lives Hub-side and Core-side, the product holds references, and no new uncontrolled long-lived secret is created.
+
 ## 4. Secure-by-default invariants
 
 The package is designed so that the following are **impossible or structurally awkward**, not merely discouraged. Each invariant is enforced at construction or at the envelope boundary.
 
-1. **No Core authority.** The package has no type, field, or method that accepts a Core authority token, a Core verdict, or a Core signing key. The only credential it can hold is a *reference*; resolution happens Hub-side.
+1. **No Core authority.** The package has no type, field, or method that accepts a Core authority token, a Core verdict, or a Core signing key. The only credential it can hold is a *reference*; resolution of signing material happens Hub-side (see §3.1). The product never holds Core credentials and never introduces a new uncontrolled product-side long-lived secret.
 2. **No self-declared ACTIVE.** The client cannot set its own onboarding state. State is read from the Hub's durable onboarding record via the routing gate; the client only observes the bounded result.
 3. **No forged tenant/product.** `productId` comes from the manifest; `tenantId` must be in the onboarding's allowed set; both are re-checked against the routing gate's resolved route before forwarding (defence in depth).
 4. **No API Hub bypass.** The only egress is the injected `HubTransport`. There is no `fetchCore`, no Convex client, no database handle in the package. The package's `package.json` has no dependency that can reach the Core database.
@@ -155,6 +179,7 @@ The client uses the exact four-way classification proven in the Phase 8 worker (
 - It will not contain Compliance Core authority, scope tables beyond the consumed registry, or verdict logic.
 - It will not open a direct Core connection, and it will not depend on a Convex client.
 - It will not store or log secrets, raw sensitive evidence, or signing keys.
+- It will not hold Core credentials or introduce a new uncontrolled product-side long-lived signing secret; the product holds only a non-secret credential reference and the authoritative signing material is resolved Hub-side (§3.1).
 - It will not manufacture or forward COMPLIANT / CERTIFIED claims.
 
 ## 10. Implementation note (deferred)

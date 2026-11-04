@@ -42,7 +42,7 @@ The manifest is a *declaration*, not a grant. It records what a product intends 
 | `healthExpectations.healthOperation` | enum | yes | `health.read` \| `readiness.snapshot.get` \| `readiness.snapshot.record`. |
 | `healthExpectations.readinessContractId` | pattern | yes | The readiness contract the health report follows. |
 | `healthExpectations.maxStalenessMs` | integer 1000–86400000 | yes | Health older than this is `UNKNOWN`, never `HEALTHY`. |
-| `retryExpectations.scheduleMs` | integer array 1–10 | yes | Backoff schedule. |
+| `retryExpectations.scheduleMs` | integer array 1–10 | yes | Backoff schedule. **ORDERED** — element order is the retry sequence and is preserved verbatim during canonicalization (never sorted). |
 | `retryExpectations.maxAttempts` | integer 1–10 | yes | Retry budget. |
 | `retryExpectations.ambiguousPolicy` | `const "RECONCILE"` | yes | Ambiguous outcomes are reconciled, never blind-retried. |
 | `retryExpectations.heldPolicy` | `const "PRESERVE"` | yes | Held work is preserved, never discarded. |
@@ -65,7 +65,7 @@ To make the manifest deterministic, the canonical form is defined as:
 
 1. **UTF-8**, no BOM, `\n` line endings.
 2. **Keys sorted** lexicographically at every level (RFC 8785 JSON Canonicalization Scheme semantics).
-3. **Arrays sorted** where order is not semantically meaningful: `supportedEnvironments`, `requiredOperations`, `requiredHubScopes`, `conformance.requiredAreas`, `retryExpectations.scheduleMs`. Arrays whose order *is* meaningful (none currently) are documented explicitly.
+3. **Arrays sorted ONLY where order is not semantically meaningful (set-like arrays):** `supportedEnvironments`, `requiredOperations`, `requiredHubScopes`, `conformance.requiredAreas`. **Ordered arrays MUST NOT be sorted.** `retryExpectations.scheduleMs` is ordered behaviour — it is the backoff sequence, and element order carries meaning (attempt 1 delay, attempt 2 delay, …). Sorting it would silently change retry timing and is therefore forbidden. Any array whose order carries meaning is preserved verbatim in canonical form and is documented explicitly as ordered.
 4. **No insignificant whitespace** in the hashed form.
 5. **Numbers** in shortest round-trippable form.
 
