@@ -11,6 +11,15 @@ export default defineConfig({
       '@arma/compliance-core-client': resolveFromRoot(
         './packages/compliance-core-client/src/index.ts',
       ),
+      '@fsts/governed-product-client': resolveFromRoot(
+        './packages/governed-product-client/src/index.ts',
+      ),
+      '@fsts/governed-product-conformance': resolveFromRoot(
+        './packages/governed-product-conformance/src/index.ts',
+      ),
+      '@fsts/governed-product-adapters': resolveFromRoot(
+        './packages/governed-product-adapters/src/index.ts',
+      ),
       '@arma/crypto': resolveFromRoot('./packages/crypto/src/index.ts'),
       '@arma/config': resolveFromRoot('./packages/config/src/index.ts'),
       '@arma/events': resolveFromRoot('./packages/events/src/index.ts'),
