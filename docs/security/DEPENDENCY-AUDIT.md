@@ -10,7 +10,12 @@ implicit.
 
 ## Gates
 
-The Hub runs two dependency gates in `pnpm validate` and in CI.
+The Hub runs three dependency gates in `pnpm validate` and in CI. All three are
+reachable through the single `pnpm deps:check` entry point, which chains the
+workspace hygiene check, the vulnerability audit, and SBOM generation in that
+order. Chaining them this way means the CI workflow needs no bespoke per-gate
+step: any run that executes the dependency check also executes the audit and
+emits the SBOM, so the gates cannot silently drift out of CI coverage.
 
 `pnpm deps:check` is the workspace hygiene check. It verifies that every
 workspace package declares a name and version, that no dependency uses a floating
@@ -28,9 +33,13 @@ the threshold to fail on moderate would force either a major tool upgrade under
 time pressure or a blanket suppression, and neither is a good security outcome.
 
 `pnpm sbom` generates a CycloneDX 1.5 JSON SBOM from the committed
-`pnpm-lock.yaml` plus the workspace packages, and CI uploads it as a build
-artifact. Each third-party component carries its resolved version, integrity
-hash, and package URL, so the SBOM is reproducible from the lockfile alone.
+`pnpm-lock.yaml` plus the workspace packages, written to
+`dist/sbom/arma-api-hub.cdx.json`. Each third-party component carries its
+resolved version, integrity hash, and package URL, so the SBOM is reproducible
+from the lockfile alone. When the CI workflow is run with a token that carries
+`workflow` scope, the file is additionally uploaded as the `sbom-cyclonedx`
+artifact; the generation gate itself runs unconditionally as part of
+`pnpm deps:check`.
 
 ## Remediation performed for the Phase 9 freeze
 

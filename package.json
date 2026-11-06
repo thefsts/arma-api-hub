@@ -21,9 +21,9 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "secret:scan": "node scripts/secret-scan.mjs",
-    "deps:check": "node scripts/dependency-check.mjs",
+    "deps:check": "node scripts/dependency-check.mjs && pnpm deps:audit && pnpm sbom",
     "convex:guardrails": "node scripts/convex-guardrails.mjs",
-    "validate": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm convex:guardrails && pnpm test && pnpm build && pnpm secret:scan && pnpm deps:check && pnpm deps:audit && pnpm sbom",
+    "validate": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm convex:guardrails && pnpm test && pnpm build && pnpm secret:scan && pnpm deps:check",
     "sbom": "node scripts/sbom.mjs",
     "deps:audit": "pnpm audit --audit-level high"
   },
