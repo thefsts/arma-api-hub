@@ -23,6 +23,6 @@
     "@arma/crypto": "workspace:*",
     "@arma/observability": "workspace:*",
     "@arma/policy": "workspace:*",
-    "fastify": "5.12.5"
+    "fastify": "5.12.6"
   }
 }
