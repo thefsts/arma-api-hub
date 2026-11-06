@@ -21,9 +21,11 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "secret:scan": "node scripts/secret-scan.mjs",
-    "deps:check": "node scripts/dependency-check.mjs",
+    "deps:check": "node scripts/dependency-check.mjs && pnpm deps:audit && pnpm sbom",
     "convex:guardrails": "node scripts/convex-guardrails.mjs",
-    "validate": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm convex:guardrails && pnpm test && pnpm build && pnpm secret:scan && pnpm deps:check"
+    "validate": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm convex:guardrails && pnpm test && pnpm build && pnpm secret:scan && pnpm deps:check",
+    "sbom": "node scripts/sbom.mjs",
+    "deps:audit": "pnpm audit --audit-level high"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
@@ -39,5 +41,15 @@
   },
   "dependencies": {
     "convex": "1.46.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "fast-uri": "4.2.3",
+      "source-map-js": "1.2.2",
+      "tinypool": "2.1.2",
+      "glob": "14.0.2",
+      "minimatch": "11.0.1",
+      "vite": "7.3.7"
+    }
   }
 }

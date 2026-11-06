@@ -4,6 +4,19 @@
 // signatures, protected payloads, and credentials can NEVER reach a log line
 // or telemetry span. This is enforced structurally by an allow-list of safe
 // keys plus a deny-list of forbidden keys and registered secret values.
+//
+// Phase 9 adds the production operations layer: the canonical transport
+// observation record, Hub-authoritative trace identity, the operational health
+// state machine, internal SLO computation, governed retention, and the
+// transport cost ownership boundary.
+
+export * from './telemetry.js';
+export * from './trace.js';
+export * from './health.js';
+export * from './slo.js';
+export * from './retention.js';
+export * from './cost.js';
+export * from './boundary.js';
 
 /** Keys that may appear in structured log/telemetry metadata. */
 export const SAFE_METADATA_KEYS = new Set([

@@ -28,15 +28,22 @@ import {
   costStatusValidator,
   credentialStateValidator,
   deliveryStatusValidator,
+  dependencyTypeValidator,
+  directionValidator,
   environmentValidator,
   failureClassValidator,
+  failureCodeValidator,
+  hopValidator,
   idempotencyStatusValidator,
   incidentSeverityValidator,
   incidentStatusValidator,
   killSwitchScopeValidator,
   lifecycleValidator,
+  observationKindValidator,
   onboardingStateValidator,
+  operationalStateValidator,
   optimizationKindValidator,
+  outcomeValidator,
   ownershipValidator,
   principalTypeValidator,
   roleValidator,
@@ -782,4 +789,107 @@ export default defineSchema({
     .index('by_productId', ['productId'])
     .index('by_productId_tenantId', ['productId', 'tenantId'])
     .index('by_state', ['state']),
+
+  // ==========================================================================
+  // Production operations / observability (Phase 9)
+  //
+  // APPEND-ONLY transport telemetry. A row describes a TRANSPORT fact only:
+  // there is no body, payload, signature, secret, credential value, evidence,
+  // verdict, or applied field, because none exists in this shape. A transport
+  // outcome is never a compliance verdict.
+  //
+  // `traceId` is Hub-minted and authoritative; `callerCorrelationRef` is the
+  // caller's reference, preserved for interoperability but never used as the
+  // trace identity. Retention is governed per row via `retentionPolicyRef` and
+  // `expiresAt` rather than a global hardcoded window.
+  // ==========================================================================
+  transportObservations: defineTable({
+    observationId: v.string(),
+    observedAt: v.number(),
+    kind: observationKindValidator,
+    traceId: v.string(),
+    callerCorrelationRef: v.optional(v.string()),
+    causationId: v.optional(v.string()),
+    productId: v.optional(v.string()),
+    tenantId: v.optional(v.string()),
+    environment: v.optional(environmentValidator),
+    serviceId: v.optional(v.string()),
+    hubRoutingIdentity: v.optional(v.string()),
+    operation: v.optional(v.string()),
+    scope: v.optional(v.string()),
+    contractVersion: v.optional(v.string()),
+    apiVersion: v.optional(v.string()),
+    direction: v.optional(directionValidator),
+    hop: v.optional(hopValidator),
+    outcome: v.optional(outcomeValidator),
+    errorCode: v.optional(failureCodeValidator),
+    failureClass: v.optional(failureClassValidator),
+    httpStatus: v.optional(v.number()),
+    latencyMs: v.optional(v.number()),
+    attempt: v.optional(v.number()),
+    maxAttempts: v.optional(v.number()),
+    retryable: v.optional(v.boolean()),
+    killSwitchEngaged: v.optional(v.boolean()),
+    replayed: v.optional(v.boolean()),
+    idempotencyMatched: v.optional(v.boolean()),
+    nonceFresh: v.optional(v.boolean()),
+    dependencyId: v.optional(v.string()),
+    dependencyType: v.optional(dependencyTypeValidator),
+    operationalState: v.optional(operationalStateValidator),
+    complianceClaim: v.literal('NONE'),
+    certificationClaim: v.literal('NONE'),
+    retentionPolicyRef: v.optional(v.string()),
+    expiresAt: v.optional(v.number()),
+  })
+    .index('by_observationId', ['observationId'])
+    .index('by_traceId_observedAt', ['traceId', 'observedAt'])
+    .index('by_productId_observedAt', ['productId', 'observedAt'])
+    .index('by_tenantId_observedAt', ['tenantId', 'observedAt'])
+    .index('by_environment_observedAt', ['environment', 'observedAt'])
+    .index('by_errorCode_observedAt', ['errorCode', 'observedAt'])
+    .index('by_kind_observedAt', ['kind', 'observedAt'])
+    .index('by_hop_observedAt', ['hop', 'observedAt'])
+    .index('by_expiresAt', ['expiresAt']),
+
+  // Dependency availability snapshots (Core, product, connector, webhook).
+  dependencyHealthSnapshots: defineTable({
+    snapshotId: v.string(),
+    dependencyId: v.string(),
+    dependencyType: dependencyTypeValidator,
+    environment: environmentValidator,
+    state: operationalStateValidator,
+    observedAt: v.number(),
+    latencyMs: v.optional(v.number()),
+    reason: v.optional(v.string()),
+    complianceClaim: v.literal('NONE'),
+    certificationClaim: v.literal('NONE'),
+  })
+    .index('by_snapshotId', ['snapshotId'])
+    .index('by_dependencyId_observedAt', ['dependencyId', 'observedAt'])
+    .index('by_dependencyType_observedAt', ['dependencyType', 'observedAt'])
+    .index('by_environment_observedAt', ['environment', 'observedAt'])
+    .index('by_state', ['state']),
+
+  // Computed INTERNAL operational SLO windows. Never an SLA or certification.
+  sloWindows: defineTable({
+    windowId: v.string(),
+    windowStart: v.number(),
+    windowEnd: v.number(),
+    totalRequests: v.number(),
+    successRatio: v.number(),
+    latencyP50Ms: v.number(),
+    latencyP95Ms: v.number(),
+    latencyP99Ms: v.number(),
+    availabilityRatio: v.number(),
+    retryRate: v.number(),
+    rateLimitEventRate: v.number(),
+    deadLetterRate: v.number(),
+    targetClass: v.literal('INTERNAL_OPERATIONAL_TARGET'),
+    complianceClaim: v.literal('NONE'),
+    breaches: v.array(v.string()),
+    createdAt: v.number(),
+  })
+    .index('by_windowId', ['windowId'])
+    .index('by_windowStart', ['windowStart'])
+    .index('by_windowEnd', ['windowEnd']),
 });

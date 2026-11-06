@@ -257,3 +257,155 @@ export const onboardingStateValidator = v.union(
   v.literal('REVOKED'),
   v.literal('REJECTED'),
 );
+
+// --- Production operations / observability (Phase 9) ---
+
+/** The published 18-code failure taxonomy. Bounded: no free-text error codes. */
+export const failureCodeValidator = v.union(
+  v.literal('AUTHENTICATION_FAILED'),
+  v.literal('AUTHORIZATION_DENIED'),
+  v.literal('TENANT_DENIED'),
+  v.literal('PRODUCT_DENIED'),
+  v.literal('ENVIRONMENT_DENIED'),
+  v.literal('SCOPE_DENIED'),
+  v.literal('INTEGRATION_INACTIVE'),
+  v.literal('REPLAY_DENIED'),
+  v.literal('STALE_REQUEST'),
+  v.literal('INTEGRITY_FAILED'),
+  v.literal('IDEMPOTENCY_CONFLICT'),
+  v.literal('RATE_LIMITED'),
+  v.literal('UNSUPPORTED_VERSION'),
+  v.literal('UNKNOWN_OPERATION'),
+  v.literal('VALIDATION_FAILED'),
+  v.literal('DEPENDENCY_UNAVAILABLE'),
+  v.literal('INTERNAL_FAILURE'),
+  v.literal('NOT_FOUND'),
+);
+
+/** Observation kind. Closed set. */
+export const observationKindValidator = v.union(
+  v.literal('REQUEST'),
+  v.literal('RESPONSE'),
+  v.literal('HOP'),
+  v.literal('FAILURE'),
+  v.literal('RETRY'),
+  v.literal('REPLAY'),
+  v.literal('RATELIMIT'),
+  v.literal('HEALTH'),
+  v.literal('COST'),
+);
+
+/** The four governed hops. */
+export const hopValidator = v.union(
+  v.literal('PRODUCT_TO_HUB'),
+  v.literal('HUB_TO_CORE'),
+  v.literal('CORE_TO_HUB'),
+  v.literal('HUB_TO_PRODUCT'),
+);
+
+/** Transport outcome. Never a compliance verdict. */
+export const outcomeValidator = v.union(
+  v.literal('ALLOWED'),
+  v.literal('DENIED'),
+  v.literal('DELIVERED'),
+  v.literal('FAILED'),
+  v.literal('TIMEOUT'),
+  v.literal('UNKNOWN'),
+);
+
+/**
+ * Operational state. Exactly four members. There is deliberately no
+ * COMPLIANT/CERTIFIED/SECURE member: transport health is not a compliance claim.
+ */
+export const operationalStateValidator = v.union(
+  v.literal('AVAILABLE'),
+  v.literal('DEGRADED'),
+  v.literal('UNAVAILABLE'),
+  v.literal('UNKNOWN'),
+);
+
+/** Dependency kind for availability tracking. */
+export const dependencyTypeValidator = v.union(
+  v.literal('CORE'),
+  v.literal('PRODUCT'),
+  v.literal('CONNECTOR'),
+  v.literal('WEBHOOK'),
+);
+
+/** Direction of a governed hop. */
+export const directionValidator = v.union(v.literal('INBOUND'), v.literal('OUTBOUND'));
+
+/**
+ * The observation input. Mirrors `@arma/observability` `TransportObservation`
+ * minus the server-assigned identity fields. `complianceClaim` and
+ * `certificationClaim` are literals so a caller cannot claim otherwise.
+ */
+export const observationInputValidator = v.object({
+  observationId: v.string(),
+  observedAt: v.number(),
+  kind: observationKindValidator,
+  traceId: v.string(),
+  callerCorrelationRef: v.optional(v.string()),
+  causationId: v.optional(v.string()),
+  productId: v.optional(v.string()),
+  tenantId: v.optional(v.string()),
+  environment: v.optional(environmentValidator),
+  serviceId: v.optional(v.string()),
+  hubRoutingIdentity: v.optional(v.string()),
+  operation: v.optional(v.string()),
+  scope: v.optional(v.string()),
+  contractVersion: v.optional(v.string()),
+  apiVersion: v.optional(v.string()),
+  direction: v.optional(directionValidator),
+  hop: v.optional(hopValidator),
+  outcome: v.optional(outcomeValidator),
+  errorCode: v.optional(failureCodeValidator),
+  failureClass: v.optional(failureClassValidator),
+  httpStatus: v.optional(v.number()),
+  latencyMs: v.optional(v.number()),
+  attempt: v.optional(v.number()),
+  maxAttempts: v.optional(v.number()),
+  retryable: v.optional(v.boolean()),
+  killSwitchEngaged: v.optional(v.boolean()),
+  replayed: v.optional(v.boolean()),
+  idempotencyMatched: v.optional(v.boolean()),
+  nonceFresh: v.optional(v.boolean()),
+  dependencyId: v.optional(v.string()),
+  dependencyType: v.optional(dependencyTypeValidator),
+  operationalState: v.optional(operationalStateValidator),
+  complianceClaim: v.literal('NONE'),
+  certificationClaim: v.literal('NONE'),
+});
+
+/** Dependency health snapshot input. */
+export const dependencyHealthInputValidator = v.object({
+  snapshotId: v.string(),
+  dependencyId: v.string(),
+  dependencyType: dependencyTypeValidator,
+  environment: environmentValidator,
+  state: operationalStateValidator,
+  observedAt: v.number(),
+  latencyMs: v.optional(v.number()),
+  reason: v.optional(v.string()),
+  complianceClaim: v.literal('NONE'),
+  certificationClaim: v.literal('NONE'),
+});
+
+/** Internal SLO window input. `targetClass` is a literal, not a free string. */
+export const sloWindowInputValidator = v.object({
+  windowId: v.string(),
+  windowStart: v.number(),
+  windowEnd: v.number(),
+  totalRequests: v.number(),
+  successRatio: v.number(),
+  latencyP50Ms: v.number(),
+  latencyP95Ms: v.number(),
+  latencyP99Ms: v.number(),
+  availabilityRatio: v.number(),
+  retryRate: v.number(),
+  rateLimitEventRate: v.number(),
+  deadLetterRate: v.number(),
+  targetClass: v.literal('INTERNAL_OPERATIONAL_TARGET'),
+  complianceClaim: v.literal('NONE'),
+  breaches: v.array(v.string()),
+});
