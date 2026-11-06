@@ -113,26 +113,6 @@ function sloWindow(overrides: Record<string, unknown> = {}) {
   };
 }
 
-/** Build a minimal valid transport cost record. */
-function costRecord(overrides: Record<string, unknown> = {}) {
-  counter += 1;
-  return {
-    costRecordId: `cost_${String(counter).padStart(8, '0')}`,
-    traceId: 'trc_0123456789abcdef0123456789abcdef',
-    serviceId: SVC_A,
-    productId: PRODUCT,
-    tenantId: TEN_A,
-    environment: 'DEVELOPMENT' as const,
-    category: 'EXTERNAL_API' as const,
-    amountMinor: 25,
-    currency: 'USD',
-    observedAt: 1_700_000_000_000 + counter,
-    costOwner: 'API_HUB' as const,
-    complianceClaim: 'NONE' as const,
-    ...overrides,
-  };
-}
-
 // --- recordObservation -------------------------------------------------------
 
 describe('recordObservation', () => {
@@ -632,58 +612,6 @@ describe('getSloWindows', () => {
         to: 1_000,
       }),
     ).rejects.toThrow(/VALIDATION_FAILED|Window end/i);
-  });
-});
-
-// --- recordTransportCost -----------------------------------------------------
-
-describe('recordTransportCost', () => {
-  it('records API-Hub-owned transport cost', async () => {
-    const t = setup();
-    const op = await seedOperator(t);
-    const input = costRecord();
-
-    const id = await op.mutation(internal.observability.recordTransportCost, { cost: input });
-    expect(id).toBe(input.costRecordId);
-
-    const rows = await t.run((ctx) => ctx.db.query('transportCostRecords').collect());
-    expect(rows[0]?.costOwner).toBe('API_HUB');
-    expect(rows[0]?.complianceClaim).toBe('NONE');
-  });
-
-  it('rejects a duplicate costRecordId with CONFLICT', async () => {
-    const t = setup();
-    const op = await seedOperator(t);
-    const input = costRecord();
-    await op.mutation(internal.observability.recordTransportCost, { cost: input });
-    await expect(
-      op.mutation(internal.observability.recordTransportCost, { cost: input }),
-    ).rejects.toThrow(/CONFLICT/i);
-  });
-
-  it('rejects a negative or fractional amount', async () => {
-    const t = setup();
-    const op = await seedOperator(t);
-    await expect(
-      op.mutation(internal.observability.recordTransportCost, {
-        cost: costRecord({ amountMinor: -1 }),
-      }),
-    ).rejects.toThrow(/VALIDATION_FAILED|non-negative integer/i);
-    await expect(
-      op.mutation(internal.observability.recordTransportCost, {
-        cost: costRecord({ amountMinor: 1.5 }),
-      }),
-    ).rejects.toThrow(/VALIDATION_FAILED|non-negative integer/i);
-  });
-
-  it('denies a service outside the caller grant', async () => {
-    const t = setup();
-    const op = await seedOperator(t);
-    await expect(
-      op.mutation(internal.observability.recordTransportCost, {
-        cost: costRecord({ serviceId: SVC_B }),
-      }),
-    ).rejects.toThrow(/FORBIDDEN|service/i);
   });
 });
 

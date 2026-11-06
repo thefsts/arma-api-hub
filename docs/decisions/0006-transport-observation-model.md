@@ -33,6 +33,30 @@ observations, and cost observations are rows in that table distinguished by
 Rows are append-only. The only destructive operation is retention purge, which
 is bounded and only deletes rows whose `expiresAt` has elapsed.
 
+### 1a. Storage model — one observation stream, two derived operational stores
+
+The observation stream is `transportObservations` and nothing else. Two further
+tables exist, but neither is a parallel observation stream: they are bounded,
+derived operational stores that are recomputable from the observation stream and
+carry no independent telemetry authority.
+
+- `dependencyHealthSnapshots` stores the **raw dependency counters** the Hub
+  observed plus the server-derived state and source. It exists so the Hub can
+  derive health without trusting a caller-asserted state, and so a Core-boundary
+  handoff can send raw counters only. It is read by the health queries and is not
+  an event log.
+- `sloWindows` stores **bounded aggregations** over the observation stream
+  (counts, latency summary, availability, error budget). It is a cache of a
+  computation, not a source of truth, and can be rebuilt from
+  `transportObservations`.
+
+Transport cost is **not** given a Phase 9 table. The Hub's canonical cost store
+is the pre-existing `apiCostEvents`; the Core usage/cost handoff is a pure
+projection (`transportCostRecordSchema` / `toCoreUsageTelemetry()`) over that
+store. Adding a `transportCostRecords` table would have created a second cost
+authority, so it was removed before the final gate. This keeps ADR 0006's
+"single observation stream, no parallel authority" invariant intact.
+
 ### 2. A closed field allow-list
 
 `packages/observability/src/telemetry.ts` defines `SAFE_OBSERVATION_FIELDS` (a
@@ -77,13 +101,15 @@ requirements, and not certification evidence.
 
 ### 7. Cost ownership is not merged
 
-`transportCostRecords` records API-Hub-owned transport cost only: external API
-calls, connectors, webhooks, messaging, transport, and storage. Model, token,
-and agent cost belongs to AI Hub; profitability and margin analysis belongs to
-REGIVANTA Cost Guard. Foreign categories and foreign fields are rejected by
-`assertCostOwnershipBoundary()`. The Hub projects a governed usage fact into the
-Core `api-hub-usage-telemetry` handoff shape; it does not become the cost
-authority for that value.
+The Hub's transport cost lives in the existing canonical `apiCostEvents` store;
+Phase 9 adds **no** second cost table. Transport cost is API-Hub-owned transport
+cost only: external API calls, connectors, webhooks, messaging, transport, and
+storage. Model, token, and agent cost belongs to AI Hub; profitability and margin
+analysis belongs to REGIVANTA Cost Guard. Foreign categories and foreign fields
+are rejected by `assertCostOwnershipBoundary()`. The Hub projects a governed
+usage fact from `apiCostEvents` into the Core `api-hub-usage-telemetry` handoff
+shape (`transportCostRecordSchema` / `toCoreUsageTelemetry()`); it does not become
+the cost authority for that value and does not persist a parallel copy.
 
 ### 8. All Convex functions are internal
 

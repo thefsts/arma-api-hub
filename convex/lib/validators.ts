@@ -409,35 +409,3 @@ export const sloWindowInputValidator = v.object({
   complianceClaim: v.literal('NONE'),
   breaches: v.array(v.string()),
 });
-
-/**
- * Cost category for API-Hub-owned transport cost telemetry. Model inference,
- * token usage, agent execution, margin, and profitability are deliberately
- * absent: those are not Hub transport costs.
- */
-export const transportCostCategoryValidator = v.union(
-  v.literal('EXTERNAL_API'),
-  v.literal('CONNECTOR'),
-  v.literal('WEBHOOK'),
-  v.literal('MESSAGING'),
-  v.literal('TRANSPORT'),
-  v.literal('STORAGE'),
-);
-
-/** Transport cost record input. `costOwner` is a literal, never a free string. */
-export const transportCostInputValidator = v.object({
-  costRecordId: v.string(),
-  traceId: v.string(),
-  serviceId: v.string(),
-  productId: v.optional(v.string()),
-  tenantId: v.optional(v.string()),
-  environment: v.optional(environmentValidator),
-  category: transportCostCategoryValidator,
-  amountMinor: v.number(),
-  currency: v.string(),
-  quantity: v.optional(v.number()),
-  unit: v.optional(v.string()),
-  observedAt: v.number(),
-  costOwner: v.literal('API_HUB'),
-  complianceClaim: v.literal('NONE'),
-});

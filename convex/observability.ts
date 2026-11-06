@@ -21,7 +21,6 @@ import {
   dependencyHealthInputValidator,
   observationInputValidator,
   sloWindowInputValidator,
-  transportCostInputValidator,
 } from './lib/validators';
 import {
   requireAuthorizationContext,
@@ -395,38 +394,6 @@ export const getSloWindows = internalQuery({
       )
       .order('desc')
       .take(limit);
-  },
-});
-
-/**
- * Record API-Hub-owned transport cost. `costOwner` is the literal API_HUB and
- * `complianceClaim` is NONE: this is not product profitability or model cost.
- * Privileged internal mutation.
- */
-export const recordTransportCost = internalMutation({
-  args: { cost: transportCostInputValidator },
-  returns: v.string(),
-  handler: async (ctx, args) => {
-    const authz = await requireAuthorizationContext(ctx);
-    requireRole(authz, WRITER_ROLES);
-    requireServiceScope(authz, args.cost.serviceId);
-    if (args.cost.environment !== undefined) {
-      requireEnvironment(authz, args.cost.environment);
-    }
-    if (!Number.isInteger(args.cost.amountMinor) || args.cost.amountMinor < 0) {
-      fail('VALIDATION_FAILED', 'Transport cost amountMinor must be a non-negative integer.');
-    }
-    const existing = await ctx.db
-      .query('transportCostRecords')
-      .withIndex('by_costRecordId', (q) => q.eq('costRecordId', args.cost.costRecordId))
-      .first();
-    if (existing) {
-      fail('CONFLICT', 'A transport cost record with this id already exists.', {
-        costRecordId: args.cost.costRecordId,
-      });
-    }
-    await ctx.db.insert('transportCostRecords', { ...args.cost, createdAt: Date.now() });
-    return args.cost.costRecordId;
   },
 });
 

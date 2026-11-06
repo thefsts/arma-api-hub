@@ -50,7 +50,6 @@ import {
   shutdownStatusValidator,
   sourceHubValidator,
   thresholdStatusValidator,
-  transportCostCategoryValidator,
   usageUnitValidator,
 } from './lib/validators';
 
@@ -893,30 +892,4 @@ export default defineSchema({
     .index('by_windowId', ['windowId'])
     .index('by_windowStart', ['windowStart'])
     .index('by_windowEnd', ['windowEnd']),
-
-  // API-Hub-owned transport cost telemetry. `costOwner` is the literal API_HUB:
-  // model/token/agent cost belongs to AI Hub and profitability/margin analysis
-  // belongs to REGIVANTA Cost Guard. This table is the governed handoff source
-  // only, never a second cost or compliance authority.
-  transportCostRecords: defineTable({
-    costRecordId: v.string(),
-    traceId: v.string(),
-    serviceId: v.string(),
-    productId: v.optional(v.string()),
-    tenantId: v.optional(v.string()),
-    environment: v.optional(environmentValidator),
-    category: transportCostCategoryValidator,
-    amountMinor: v.number(),
-    currency: v.string(),
-    quantity: v.optional(v.number()),
-    unit: v.optional(v.string()),
-    observedAt: v.number(),
-    costOwner: v.literal('API_HUB'),
-    complianceClaim: v.literal('NONE'),
-    createdAt: v.number(),
-  })
-    .index('by_costRecordId', ['costRecordId'])
-    .index('by_traceId', ['traceId'])
-    .index('by_serviceId_observedAt', ['serviceId', 'observedAt'])
-    .index('by_tenantId_observedAt', ['tenantId', 'observedAt']),
 });

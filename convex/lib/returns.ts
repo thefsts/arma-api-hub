@@ -45,7 +45,6 @@ import {
   shutdownStatusValidator,
   sourceHubValidator,
   thresholdStatusValidator,
-  transportCostCategoryValidator,
   usageUnitValidator,
 } from './validators';
 
@@ -691,25 +690,5 @@ export const sloWindowDoc = v.object({
   targetClass: v.literal('INTERNAL_OPERATIONAL_TARGET'),
   complianceClaim: v.literal('NONE'),
   breaches: v.array(v.string()),
-  createdAt: v.number(),
-});
-
-export const transportCostRecordDoc = v.object({
-  _id: v.id('transportCostRecords'),
-  _creationTime: v.number(),
-  costRecordId: v.string(),
-  traceId: v.string(),
-  serviceId: v.string(),
-  productId: v.optional(v.string()),
-  tenantId: v.optional(v.string()),
-  environment: v.optional(environmentValidator),
-  category: transportCostCategoryValidator,
-  amountMinor: v.number(),
-  currency: v.string(),
-  quantity: v.optional(v.number()),
-  unit: v.optional(v.string()),
-  observedAt: v.number(),
-  costOwner: v.literal('API_HUB'),
-  complianceClaim: v.literal('NONE'),
   createdAt: v.number(),
 });

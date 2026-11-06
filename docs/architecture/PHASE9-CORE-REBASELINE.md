@@ -80,7 +80,7 @@ Registry counts at `2c8574d`: **26 operations / 11 governed actions**, **22 Core
 | 9 | Policy transport | `registry/policy-lifecycle/handoffs.json` byte-identical; `lib/delivery*.ts` untouched | **MATCH** |
 | 10 | Legal transport | `packages/api-hub-contract/src/legal-change-transport.mjs` untouched | **MATCH** |
 | 11 | Assurance bridge | New `packages/api-hub-contract/src/assurance-transport.mjs` (+293), registered in `transport-boundary.mjs`; `TRANSPORT_ONLY = true`, `FORBIDDEN_ASSURANCE_AUTHORITY_FIELDS`, `assertNoTransportLoop` | **COMPATIBLE ADDITIVE CHANGE** — no Phase 9 obligation; Hub does not consume it yet |
-| 12 | Usage / cost telemetry handoff | `registry/api-hub/usage-telemetry.json` + `schemas/api-hub-usage-telemetry.schema.json` unchanged. Not vendored in the Hub | **COMPATIBLE ADDITIVE CHANGE** — Hub `transportCostRecords` must align **only** at the governed handoff boundary |
+| 12 | Usage / cost telemetry handoff | `registry/api-hub/usage-telemetry.json` + `schemas/api-hub-usage-telemetry.schema.json` unchanged. Not vendored in the Hub | **COMPATIBLE ADDITIVE CHANGE** — Hub projects from canonical `apiCostEvents` into the governed handoff shape **only** at the boundary; no second cost table |
 | 13 | Rollout / kill-switch semantics | New Core `lib/rolloutControls.ts` (`PAUSED\|KILLED` → `ROLLOUT_BLOCKED`), kill-switch evaluated **before** health so `HEALTHY` can never override `KILLED`. Hub `convex/killSwitches.ts` is a transport-level control, not the rollout authority | **COMPATIBLE ADDITIVE CHANGE** — Core owns rollout; Hub must not assert rollout state |
 
 **DRIFT-BLOCKERS: 0.**
@@ -97,12 +97,12 @@ Registry counts at `2c8574d`: **26 operations / 11 governed actions**, **22 Core
    one-directional; the Hub never submits a derived state to Core — only raw counters.
 3. **`UNKNOWN` is terminal-negative.** Hub `UNKNOWN` and Core `UNKNOWN` both fail
    closed. Neither may silently become healthy.
-4. **Cost telemetry boundary.** `transportCostRecords` stays Hub-owned
-   (`costOwner = API_HUB`) for external API / connector / webhook / messaging /
-   transport / storage cost. Model/token/agent cost belongs to the AI Hub;
-   profitability/margin belongs to REGIVANTA Cost Guard. A projection to the Core
-   `api-hub-usage-telemetry` handoff shape is a boundary adapter, not a second
-   authority.
+4. **Cost telemetry boundary.** The Hub's canonical cost store remains
+   `apiCostEvents` (`costOwner = API_HUB`) for external API / connector / webhook
+   / messaging / transport / storage cost. Model/token/agent cost belongs to the
+   AI Hub; profitability/margin belongs to REGIVANTA Cost Guard. The projection to
+   the Core `api-hub-usage-telemetry` handoff shape is a boundary adapter over
+   `apiCostEvents`, not a second table and not a second authority.
 5. **Rollout is Core-owned.** Hub observations may *record* `killSwitchEngaged` as an
    observed transport fact; the Hub never asserts `ROLLOUT_BLOCKED` as its own
    decision.

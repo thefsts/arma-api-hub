@@ -23,7 +23,14 @@ product is compliant, certified, approved, released, verified, or secure.
 
 All transport telemetry is written to one append-oriented table,
 `transportObservations`. There is no second telemetry table, no parallel event
-log, and no denormalised copy of an observation in another store. A single
+log, and no denormalised copy of an observation in another store. Two further
+tables exist but are not observation streams: `dependencyHealthSnapshots` holds
+the raw dependency counters the Hub observed (so health can be derived without
+trusting a caller-asserted state) and `sloWindows` holds bounded aggregations
+that are recomputable from the observation stream. Neither carries independent
+telemetry authority, and transport cost is not given a Phase 9 table at all —
+the Core cost handoff is a projection over the existing canonical `apiCostEvents`
+store. A single
 observation is a closed record with a fixed allow-list of fields. The writer
 accepts only fields on that allow-list; any field outside it is dropped and
 reported as a projection issue rather than persisted. This is deliberate. An
